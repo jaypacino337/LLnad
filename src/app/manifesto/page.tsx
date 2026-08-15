@@ -34,7 +34,7 @@ export default function ManifestoPage() {
       <header>
         <h1 className="text-3xl font-medium tracking-tight text-ink sm:text-4xl">Manifesto</h1>
         <p className="mt-4 text-lg leading-relaxed text-muted">
-          Most of the web is a feed: infinite, sorted by someone else, gone tomorrow. LLNAD is the
+          Most of the web is a feed: infinite, sorted by someone else, gone tomorrow. Solanda is the
           opposite shape. It is a fixed piece of ground, divided once, where the only thing that
           decides your position is which square you took and when.
         </p>

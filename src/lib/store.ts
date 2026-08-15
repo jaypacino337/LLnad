@@ -12,7 +12,7 @@ import type { ClaimInput, LandStats, Plot } from "./types";
  * means reimplementing this module.
  */
 
-const DATA_DIR = process.env.LLNAD_DATA_DIR ?? path.join(process.cwd(), ".data");
+const DATA_DIR = process.env.SOLANDA_DATA_DIR ?? path.join(process.cwd(), ".data");
 const DATA_FILE = path.join(DATA_DIR, "plots.json");
 
 type PlotMap = Map<string, Plot>;
@@ -77,7 +77,7 @@ async function readFromDisk(): Promise<PlotMap | null> {
     // Never lose a settler to a bad parse: park the file and start from seed.
     const quarantine = `${DATA_FILE}.corrupt-${process.pid}`;
     await fs.rename(DATA_FILE, quarantine).catch(() => {});
-    console.error(`[llnad] could not read ${DATA_FILE}, moved to ${quarantine}`, error);
+    console.error(`[solanda] could not read ${DATA_FILE}, moved to ${quarantine}`, error);
     return null;
   }
 }
@@ -122,7 +122,7 @@ async function load(): Promise<PlotMap> {
       } else {
         cache = seedMap();
         await enqueueWrite(cache).catch((error) => {
-          console.error("[llnad] could not write the initial land record", error);
+          console.error("[solanda] could not write the initial land record", error);
         });
       }
       return cache;

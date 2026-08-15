@@ -15,7 +15,7 @@ export function SiteFooter() {
         <div>
           <div className="flex items-center gap-2.5">
             <BrandMark className="size-5 text-ink" />
-            <span className="font-mono text-sm font-semibold tracking-[0.22em]">LLNAD</span>
+            <span className="font-mono text-sm font-semibold tracking-[0.22em]">SOLANDA</span>
           </div>
           <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted">
             {GRID_COLS} by {GRID_ROWS} plots, {formatNumber(TOTAL_PLOTS)} in total. One is yours if

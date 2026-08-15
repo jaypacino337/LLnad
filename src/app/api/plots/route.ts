@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       },
     );
   } catch (error) {
-    console.error("[llnad] claim failed", error);
+    console.error("[solanda] claim failed", error);
     return NextResponse.json(
       { error: "claim_failed", message: "The land record could not be written. Try again." },
       { status: 500, headers: NO_STORE },

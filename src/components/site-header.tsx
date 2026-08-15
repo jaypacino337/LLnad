@@ -30,7 +30,7 @@ export function SiteHeader() {
           onClick={() => setOpen(false)}
         >
           <BrandMark className="size-6 text-ink" />
-          <span className="font-mono text-base font-semibold tracking-[0.22em]">LLNAD</span>
+          <span className="font-mono text-base font-semibold tracking-[0.22em]">SOLANDA</span>
         </Link>
 
         <nav className="ml-auto hidden items-center gap-1 md:flex" aria-label="Main">

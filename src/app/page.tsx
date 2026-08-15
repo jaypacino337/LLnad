@@ -73,7 +73,7 @@ export default async function HomePage() {
             </h1>
 
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted">
-              LLNAD is one map, {GRID_COLS} squares across and {GRID_ROWS} down. Take a square, give
+              Solanda is one map, {GRID_COLS} squares across and {GRID_ROWS} down. Take a square, give
               it a name, and point it at your work. No feed, no ranking — just a place that is yours
               and a set of neighbours you did not pick.
             </p>

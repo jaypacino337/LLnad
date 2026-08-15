@@ -1,6 +1,6 @@
 "use client";
 
-const STORAGE_KEY = "llnad-theme";
+const STORAGE_KEY = "solanda-theme";
 
 /**
  * Stateless on purpose. Which icon shows is decided by CSS from the

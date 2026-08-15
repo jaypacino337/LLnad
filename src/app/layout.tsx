@@ -7,22 +7,22 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "LLNAD — claim your plot of the web",
-    template: "%s · LLNAD",
+    default: "Solanda — claim your plot of the web",
+    template: "%s · Solanda",
   },
   description:
-    "LLNAD is a 64 by 64 grid of web. Claim a plot, name it, point it at your work, and take your place on the map.",
-  keywords: ["llnad", "plot", "map", "grid", "homepage", "builders", "directory"],
+    "Solanda is a 64 by 64 grid of web. Claim a plot, name it, point it at your work, and take your place on the map.",
+  keywords: ["solanda", "plot", "map", "grid", "homepage", "builders", "directory"],
   openGraph: {
-    title: "LLNAD — claim your plot of the web",
+    title: "Solanda — claim your plot of the web",
     description:
       "A 64 by 64 grid of web. Claim a plot, name it, point it at your work, and take your place on the map.",
-    siteName: "LLNAD",
+    siteName: "Solanda",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "LLNAD",
+    title: "Solanda",
     description: "Claim your plot of the web.",
   },
   metadataBase: process.env.NEXT_PUBLIC_SITE_URL
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
 const THEME_BOOTSTRAP = `
 (function () {
   try {
-    var stored = localStorage.getItem("llnad-theme");
+    var stored = localStorage.getItem("solanda-theme");
     var theme = stored === "light" || stored === "dark"
       ? stored
       : (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");

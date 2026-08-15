@@ -11,7 +11,7 @@ export const LIMITS = {
 
 /** Handles that would let a plot impersonate the site itself. */
 const RESERVED_HANDLES = new Set([
-  "llnad",
+  "solanda",
   "admin",
   "administrator",
   "root",

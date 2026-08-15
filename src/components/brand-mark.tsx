@@ -5,7 +5,7 @@ export function BrandMark({ className = "size-6" }: { className?: string }) {
       viewBox="0 0 24 24"
       className={className}
       role="img"
-      aria-label="LLNAD"
+      aria-label="SOLANDA"
       fill="none"
       strokeLinecap="square"
     >

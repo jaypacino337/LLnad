@@ -1,8 +1,8 @@
-# LLNAD
+# Solanda
 
 **Claim your plot of the web.**
 
-LLNAD is a single fixed map — 64 squares across, 64 down, 4,096 plots in total. A
+Solanda is a single fixed map — 64 squares across, 64 down, 4,096 plots in total. A
 visitor pans across the survey, picks an empty square, names it, gives it a
 colour and a mark, and points it at their work. Every plot has a spreadsheet-style
 address like `AF32`, its own page, and an entry in a public JSON register.
@@ -67,7 +67,7 @@ other. On first run the file is created from the founding settlement in
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `LLNAD_DATA_DIR` | `./.data` | Where `plots.json` lives |
+| `SOLANDA_DATA_DIR` | `./.data` | Where `plots.json` lives |
 | `NEXT_PUBLIC_SITE_URL` | unset | Absolute URLs in metadata, `sitemap.xml`, `robots.txt` |
 
 Everything that touches storage goes through `src/lib/store.ts`. Moving to
@@ -132,9 +132,9 @@ src/
 ## Deploying
 
 A standard Next.js app — any Node host works. The only requirement is a
-**writable, persistent** `LLNAD_DATA_DIR`. On platforms with an ephemeral or
+**writable, persistent** `SOLANDA_DATA_DIR`. On platforms with an ephemeral or
 read-only filesystem the register will reset on redeploy, so point
-`LLNAD_DATA_DIR` at a mounted volume or reimplement `src/lib/store.ts` against a
+`SOLANDA_DATA_DIR` at a mounted volume or reimplement `src/lib/store.ts` against a
 managed database.
 
 ## Notes
