@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PlotCard, PlotGlyph } from "@/components/plot-card";
+import { PlotManager } from "@/components/plot-manager";
 import { formatDate, prettyUrl } from "@/lib/format";
 import { parseCoord, regionName, toCoord } from "@/lib/land";
 import { getPlot, listPlots } from "@/lib/store";
@@ -83,6 +84,7 @@ export default async function PlotPage({ params }: PlotPageProps) {
               </h1>
               <p className="mt-2 font-mono text-sm text-muted">
                 {plot.coord} · held by @{plot.handle} · claimed {formatDate(plot.claimedAt)}
+                {plot.updatedAt ? ` · updated ${formatDate(plot.updatedAt)}` : ""}
               </p>
             </div>
           </div>
@@ -111,6 +113,8 @@ export default async function PlotPage({ params }: PlotPageProps) {
               Show on the map
             </Link>
           </div>
+
+          <PlotManager plot={plot} />
         </article>
       ) : (
         <div className="mt-6">

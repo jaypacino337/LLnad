@@ -1,6 +1,9 @@
 import type { Plot } from "./types";
 
-export type SeedPlot = Omit<Plot, "col" | "row">;
+/** Position is derived from `coord`, and edit metadata is optional in a fixture. */
+export type SeedPlot = Omit<Plot, "col" | "row" | "updatedAt"> & {
+  updatedAt?: string | null;
+};
 
 /**
  * The founding settlement. Ships with the app so a fresh install has a map

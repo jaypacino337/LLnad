@@ -18,6 +18,7 @@ import { getColor } from "@/lib/palette";
 import type { Plot } from "@/lib/types";
 
 import { ClaimForm } from "./claim-form";
+import { CopyField } from "./copy-field";
 
 const MIN_ZOOM = 0.4;
 const MAX_ZOOM = 3.2;
@@ -50,7 +51,7 @@ export function LandMap({ initialPlots, initialCoord }: LandMapProps) {
     if (!initialCoord) return null;
     return parseCoord(initialCoord);
   });
-  const [justClaimed, setJustClaimed] = useState<Plot | null>(null);
+  const [justClaimed, setJustClaimed] = useState<{ plot: Plot; claimKey: string } | null>(null);
   const [jumpValue, setJumpValue] = useState("");
   const [jumpError, setJumpError] = useState<string | null>(null);
   /** Mirrors the drag ref so the cursor style can change during a pan. */
@@ -283,9 +284,9 @@ export function LandMap({ initialPlots, initialCoord }: LandMapProps) {
     centerOn(target, Math.max(zoom, 1.4));
   }
 
-  function onClaimed(plot: Plot) {
+  function onClaimed(plot: Plot, claimKey: string) {
     setPlots((current) => [plot, ...current]);
-    setJustClaimed(plot);
+    setJustClaimed({ plot, claimKey });
   }
 
   const claimedCount = plots.length;
@@ -512,17 +513,28 @@ export function LandMap({ initialPlots, initialCoord }: LandMapProps) {
         {justClaimed ? (
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.18em] text-accent">Recorded</p>
-            <h2 className="mt-2 text-xl font-medium text-ink">{justClaimed.title}</h2>
+            <h2 className="mt-2 text-xl font-medium text-ink">{justClaimed.plot.title}</h2>
             <p className="mt-1 font-mono text-sm text-muted">
-              {justClaimed.coord} · @{justClaimed.handle}
+              {justClaimed.plot.coord} · @{justClaimed.plot.handle}
             </p>
-            <p className="mt-4 text-sm leading-relaxed text-muted">
-              The plot is yours and the map has been updated. Share the address so people can find
-              you.
-            </p>
+
+            <div className="mt-5 rounded-lg border border-accent/50 bg-raised p-4">
+              <h3 className="text-sm font-semibold text-ink">Save your claim key</h3>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted">
+                This is shown once and cannot be recovered. It is the only way to edit or release{" "}
+                {justClaimed.plot.coord}.
+              </p>
+              <div className="mt-3">
+                <CopyField
+                  value={justClaimed.claimKey}
+                  label={`Claim key for ${justClaimed.plot.coord}`}
+                />
+              </div>
+            </div>
+
             <div className="mt-5 flex flex-wrap gap-2">
               <Link
-                href={`/plot/${justClaimed.coord}`}
+                href={`/plot/${justClaimed.plot.coord}`}
                 className="rounded-md bg-accent px-3.5 py-2 text-sm font-semibold text-accent-ink"
               >
                 Visit your plot

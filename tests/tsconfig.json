@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    // Tests run straight through Node's type stripping, so they import the
+    // real source files by path and need the .ts extension to be legal.
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["**/*.ts", "../src/lib/**/*.ts"]
+}

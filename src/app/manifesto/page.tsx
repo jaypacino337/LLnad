@@ -19,6 +19,10 @@ const RULES = [
     body: "A plot holds a name, a mark, a colour, a sentence and a link. That is the entire format. You can hold more than one plot, but each is claimed on its own.",
   },
   {
+    title: "What you take stays yours",
+    body: "Claiming a plot gives you a key, shown once. It is the only proof of ownership, and the only way to edit your plot or hand it back. Nobody can take an address off you, and nobody can edit it for you — including us.",
+  },
+  {
     title: "Order is chronological, never ranked",
     body: "There is no score, no trending, no promoted plots. The directory sorts by when things happened, and the map by where they are.",
   },
@@ -98,13 +102,25 @@ export default function ManifestoPage() {
           <Endpoint
             method="POST"
             path="/api/plots"
-            body="Records a claim. Send coord, title, handle, colour, glyph and optionally url and bio. Returns 409 if the plot is already held."
+            body="Records a claim. Send coord, title, handle, colour, glyph and optionally url and bio. Returns 409 if the plot is already held, and a claim key you will only ever see once."
+          />
+          <Endpoint
+            method="PATCH"
+            path="/api/plots/AF32"
+            body="Edits a plot you hold. Send your key as an x-claim-key header and only the fields you want changed. The address and the handle are fixed."
+          />
+          <Endpoint
+            method="DELETE"
+            path="/api/plots/AF32"
+            body="Hands a plot back. Same header, same key. The address returns to the pool for anyone to take."
           />
         </dl>
 
         <p className="mt-8 text-sm leading-relaxed text-muted">
-          Writes are rate limited per client, and a claim cannot be overwritten — the register is
-          append-only by design.
+          Reads need nothing. Writes are rate limited per client and require the claim key issued
+          when the plot was taken — it is stored only as a hash, so a copy of the register does not
+          let anyone edit a single plot in it. The founding settlement has no keys at all, which is
+          why those plots can be read but never changed.
         </p>
       </section>
 

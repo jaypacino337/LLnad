@@ -25,9 +25,9 @@ export const metadata: Metadata = {
     title: "Solanda",
     description: "Claim your plot of the web.",
   },
-  metadataBase: process.env.NEXT_PUBLIC_SITE_URL
-    ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
-    : undefined,
+  // Social cards need absolute URLs. Set NEXT_PUBLIC_SITE_URL in production;
+  // the localhost fallback keeps development quiet and predictable.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
 };
 
 /**

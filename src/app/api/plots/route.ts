@@ -67,7 +67,13 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { plot: result.plot },
+      {
+        plot: result.plot,
+        // Shown exactly once. It is not recoverable, and it is the only proof
+        // of ownership, so the client is responsible for saving it.
+        claimKey: result.claimKey,
+        message: "Save the claim key. It is the only way to edit or release this plot.",
+      },
       {
         status: 201,
         headers: { ...NO_STORE, location: `/plot/${result.plot.coord}` },

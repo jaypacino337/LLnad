@@ -1,6 +1,6 @@
 import { parseCoord } from "./land";
 import { isColorKey, isGlyph } from "./palette";
-import type { ClaimInput, FieldErrors } from "./types";
+import type { ClaimInput, FieldErrors, PlotPatch } from "./types";
 
 export const LIMITS = {
   title: 40,
@@ -51,6 +51,63 @@ function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+// --- Per-field rules, shared by the claim and the patch --------------------
+
+function checkTitle(raw: string): { value: string; error?: string } {
+  const value = clean(raw);
+  if (!value) return { value, error: "Give your plot a name." };
+  if (value.length > LIMITS.title) {
+    return { value, error: `Keep it under ${LIMITS.title} characters.` };
+  }
+  return { value };
+}
+
+function checkHandle(raw: string): { value: string; error?: string } {
+  const value = clean(raw).replace(/^@+/, "").toLowerCase();
+  if (!value) return { value, error: "A settler needs a handle." };
+  if (value.length < 2 || value.length > LIMITS.handle) {
+    return { value, error: `Use 2 to ${LIMITS.handle} characters.` };
+  }
+  if (!HANDLE_PATTERN.test(value)) {
+    return { value, error: "Letters, numbers, dashes and underscores only." };
+  }
+  if (RESERVED_HANDLES.has(value)) return { value, error: "That handle is reserved." };
+  return { value };
+}
+
+/** Empty input is a deliberate "no link", not an error. */
+function checkUrl(raw: string): { value: string | null; error?: string } {
+  const trimmed = clean(raw);
+  if (!trimmed) return { value: null };
+  if (trimmed.length > LIMITS.url) {
+    return { value: null, error: `Keep it under ${LIMITS.url} characters.` };
+  }
+
+  const candidate = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return { value: null, error: "Only http and https links are allowed." };
+    }
+    if (!parsed.hostname.includes(".")) {
+      return { value: null, error: "That does not look like a real address." };
+    }
+    return { value: parsed.toString() };
+  } catch {
+    return { value: null, error: "That does not look like a real address." };
+  }
+}
+
+function checkBio(raw: string): { value: string | null; error?: string } {
+  const value = clean(raw);
+  if (value.length > LIMITS.bio) {
+    return { value: null, error: `Keep it under ${LIMITS.bio} characters.` };
+  }
+  return { value: value || null };
+}
+
+// --- Claims ----------------------------------------------------------------
+
 export interface ValidationResult {
   ok: boolean;
   errors: FieldErrors;
@@ -68,68 +125,93 @@ export function validateClaim(body: unknown): ValidationResult {
     errors.coord = "That address is not on the land.";
   }
 
-  const title = clean(asString(input.title));
-  if (!title) {
-    errors.title = "Give your plot a name.";
-  } else if (title.length > LIMITS.title) {
-    errors.title = `Keep it under ${LIMITS.title} characters.`;
-  }
+  const title = checkTitle(asString(input.title));
+  if (title.error) errors.title = title.error;
 
-  const handle = clean(asString(input.handle)).replace(/^@+/, "").toLowerCase();
-  if (!handle) {
-    errors.handle = "A settler needs a handle.";
-  } else if (handle.length < 2 || handle.length > LIMITS.handle) {
-    errors.handle = `Use 2 to ${LIMITS.handle} characters.`;
-  } else if (!HANDLE_PATTERN.test(handle)) {
-    errors.handle = "Letters, numbers, dashes and underscores only.";
-  } else if (RESERVED_HANDLES.has(handle)) {
-    errors.handle = "That handle is reserved.";
-  }
+  const handle = checkHandle(asString(input.handle));
+  if (handle.error) errors.handle = handle.error;
 
-  const rawUrl = clean(asString(input.url));
-  let url: string | null = null;
-  if (rawUrl) {
-    if (rawUrl.length > LIMITS.url) {
-      errors.url = `Keep it under ${LIMITS.url} characters.`;
-    } else {
-      const candidate = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
-      try {
-        const parsed = new URL(candidate);
-        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-          errors.url = "Only http and https links are allowed.";
-        } else if (!parsed.hostname.includes(".")) {
-          errors.url = "That does not look like a real address.";
-        } else {
-          url = parsed.toString();
-        }
-      } catch {
-        errors.url = "That does not look like a real address.";
-      }
-    }
-  }
+  const url = checkUrl(asString(input.url));
+  if (url.error) errors.url = url.error;
 
-  const bio = clean(asString(input.bio));
-  if (bio.length > LIMITS.bio) {
-    errors.bio = `Keep it under ${LIMITS.bio} characters.`;
-  }
+  const bio = checkBio(asString(input.bio));
+  if (bio.error) errors.bio = bio.error;
 
   const color = asString(input.color);
-  if (!isColorKey(color)) {
-    errors.color = "Pick one of the available colours.";
-  }
+  if (!isColorKey(color)) errors.color = "Pick one of the available colours.";
 
   const glyph = asString(input.glyph);
-  if (!isGlyph(glyph)) {
-    errors.glyph = "Pick one of the available marks.";
-  }
+  if (!isGlyph(glyph)) errors.glyph = "Pick one of the available marks.";
 
-  if (Object.keys(errors).length > 0) {
-    return { ok: false, errors };
-  }
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
 
   return {
     ok: true,
     errors: {},
-    value: { coord, title, handle, url, bio: bio || null, color, glyph },
+    value: {
+      coord,
+      title: title.value,
+      handle: handle.value,
+      url: url.value,
+      bio: bio.value,
+      color,
+      glyph,
+    },
   };
+}
+
+// --- Edits -----------------------------------------------------------------
+
+export interface PatchValidation {
+  ok: boolean;
+  errors: FieldErrors;
+  value?: PlotPatch;
+}
+
+/**
+ * Only the keys actually present are validated and returned, so a caller can
+ * change one field without resending the rest. The address and the handle are
+ * not editable — they are how the rest of the map refers to this plot.
+ */
+export function validatePatch(body: unknown): PatchValidation {
+  const errors: FieldErrors = {};
+  const input = (typeof body === "object" && body !== null ? body : {}) as Record<string, unknown>;
+  const patch: PlotPatch = {};
+
+  if (input.title !== undefined) {
+    const title = checkTitle(asString(input.title));
+    if (title.error) errors.title = title.error;
+    else patch.title = title.value;
+  }
+
+  if (input.url !== undefined) {
+    const url = checkUrl(asString(input.url));
+    if (url.error) errors.url = url.error;
+    else patch.url = url.value;
+  }
+
+  if (input.bio !== undefined) {
+    const bio = checkBio(asString(input.bio));
+    if (bio.error) errors.bio = bio.error;
+    else patch.bio = bio.value;
+  }
+
+  if (input.color !== undefined) {
+    const color = asString(input.color);
+    if (!isColorKey(color)) errors.color = "Pick one of the available colours.";
+    else patch.color = color;
+  }
+
+  if (input.glyph !== undefined) {
+    const glyph = asString(input.glyph);
+    if (!isGlyph(glyph)) errors.glyph = "Pick one of the available marks.";
+    else patch.glyph = glyph;
+  }
+
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  if (Object.keys(patch).length === 0) {
+    return { ok: false, errors: { title: "There is nothing to change." } };
+  }
+
+  return { ok: true, errors: {}, value: patch };
 }

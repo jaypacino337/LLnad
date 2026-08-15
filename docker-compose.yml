@@ -1,0 +1,17 @@
+services:
+  solanda:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      # Where the register is written. Must point at the mounted volume.
+      SOLANDA_DATA_DIR: /data
+      # Absolute URLs for social cards, sitemap and feed.
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+    volumes:
+      # Without this the land resets to the founding seed on every deploy.
+      - register:/data
+    restart: unless-stopped
+
+volumes:
+  register:

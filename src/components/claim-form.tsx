@@ -8,7 +8,8 @@ import { LIMITS } from "@/lib/validate";
 
 interface ClaimFormProps {
   coord: string;
-  onClaimed: (plot: Plot) => void;
+  /** The key is handed over once and never again — the parent must surface it. */
+  onClaimed: (plot: Plot, claimKey: string) => void;
 }
 
 const FIELD_CLASS =
@@ -43,6 +44,7 @@ export function ClaimForm({ coord, onClaimed }: ClaimFormProps) {
 
       const payload = (await response.json().catch(() => ({}))) as {
         plot?: Plot;
+        claimKey?: string;
         message?: string;
         fields?: FieldErrors;
       };
@@ -53,7 +55,7 @@ export function ClaimForm({ coord, onClaimed }: ClaimFormProps) {
         return;
       }
 
-      if (payload.plot) onClaimed(payload.plot);
+      if (payload.plot) onClaimed(payload.plot, payload.claimKey ?? "");
     } catch {
       setMessage("The network dropped out. Try again.");
     } finally {
@@ -217,7 +219,8 @@ export function ClaimForm({ coord, onClaimed }: ClaimFormProps) {
       </button>
 
       <p className="text-[11px] leading-relaxed text-muted">
-        Claims are public and permanent. Do not put anything here you would not put on a signpost.
+        Claims are public. You will get a key to edit or release this plot later — it is shown once,
+        so keep it. Do not put anything here you would not put on a signpost.
       </p>
     </form>
   );
