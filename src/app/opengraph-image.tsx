@@ -1,14 +1,50 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { ImageResponse } from "next/og";
+
+import { BRAND } from "@/lib/brand";
 
 export const alt = "PumpXBT — AI intelligence for Pump.fun";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 /**
- * Brand-only card: name, tagline, agent glyph. Deliberately carries no
- * metrics, so a cached share can never show stale or unverifiable numbers.
+ * Social card. When the real banner is committed at public/brand/banner.png it
+ * becomes the card; otherwise a brand-only layout is drawn. Neither variant
+ * carries metrics, so a cached share can never show stale numbers.
  */
 export default function Image() {
+  if (BRAND.banner) {
+    try {
+      // Literal path so Next's file tracing bundles the asset with this route.
+      const banner = readFileSync(path.join(process.cwd(), "public", "brand", "banner.png"));
+      return new ImageResponse(
+        (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "#ffffff",
+            }}
+          >
+            <img
+              src={`data:image/png;base64,${banner.toString("base64")}`}
+              alt=""
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          </div>
+        ),
+        size,
+      );
+    } catch {
+      // Fall through to the drawn card if the file cannot be read at runtime.
+    }
+  }
+
   return new ImageResponse(
     (
       <div

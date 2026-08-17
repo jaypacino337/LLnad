@@ -1,8 +1,28 @@
+/* eslint-disable @next/next/no-img-element --
+   The agent mark is a small static asset served from /public; next/image
+   optimisation buys nothing at this size and adds a loader dependency. */
+import { BRAND, BRAND_AGENT_SRC } from "@/lib/brand";
+
 /**
- * PumpXBT agent mark — an original geometric glyph: a hooded silhouette with
- * the capsule motif, built from primitives so it stays crisp at 20px.
+ * PumpXBT agent mark. When the real mascot artwork is committed at
+ * public/brand/agent.png it is used everywhere automatically; until then an
+ * original geometric glyph (hooded silhouette + capsule) stands in.
  */
 export function BrandMark({ className = "size-7" }: { className?: string }) {
+  if (BRAND.agent) {
+    return (
+      <span className={`relative inline-block ${className} shrink-0 overflow-hidden rounded-[7px]`}>
+        <img
+          src={BRAND_AGENT_SRC}
+          alt=""
+          className="size-full object-cover"
+          width={56}
+          height={56}
+        />
+      </span>
+    );
+  }
+
   return (
     <span
       className={`relative inline-grid ${className} shrink-0 place-items-center overflow-hidden rounded-[7px] bg-ink`}
@@ -27,6 +47,20 @@ export function BrandMark({ className = "size-7" }: { className?: string }) {
         <path d="M18.95 6.1h1.55v3.1h-1.55a1.55 1.55 0 0 1 0-3.1Z" fill="var(--mint)" />
       </svg>
     </span>
+  );
+}
+
+/** Hero-sized mascot. Renders nothing until the artwork is committed. */
+export function AgentMascot({ className = "" }: { className?: string }) {
+  if (!BRAND.agent) return null;
+  return (
+    <img
+      src={BRAND_AGENT_SRC}
+      alt="The PumpXBT agent"
+      className={`pointer-events-none select-none ${className}`}
+      width={320}
+      height={320}
+    />
   );
 }
 

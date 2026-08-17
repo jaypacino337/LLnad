@@ -149,8 +149,17 @@ Animation is limited to one status pulse, a 0.22s row entrance, and hover states
 No webfonts: this build uses system stacks, which render instantly with no
 layout shift.
 
-## Notes
+## Brand assets
 
-The agent mark in `src/components/brand-mark.tsx` and `src/app/icon.svg` is an
-original geometric glyph — a hooded silhouette with the capsule motif — not a
-reproduction of any existing character artwork.
+The mascot and banner activate automatically when committed:
+
+| File | Used as |
+| --- | --- |
+| `public/brand/agent.png` | Header/footer mark and the hero mascot (square, transparent background works best) |
+| `public/brand/banner.png` | The social share card (1200x630 or wider) |
+
+Detection happens at build time (`next.config.ts`), so committing the files and
+redeploying is the whole procedure — no code change, no env var. Until they
+exist, an original geometric glyph (hooded silhouette + capsule) stands in, and
+the social card falls back to a drawn brand layout. Neither card variant
+carries metrics, so a cached share can never show stale numbers.

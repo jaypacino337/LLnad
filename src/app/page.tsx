@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 
 import { AgentFeed } from "@/components/agent-feed";
+import { AgentMascot } from "@/components/brand-mark";
 import { MarketTable } from "@/components/market-table";
 import { TrendingList } from "@/components/trending-list";
 import { WalletFlowTable } from "@/components/wallet-flow";
@@ -51,24 +52,29 @@ export default async function DashboardPage() {
   return (
     <>
       {/* Hero — compact on purpose: the product starts one scroll-inch below. */}
-      <section className="relative border-b border-line">
+      <section className="relative overflow-hidden border-b border-line">
         <div aria-hidden className="pointer-events-none absolute inset-0 grid-wash opacity-70" />
-        <div className="relative mx-auto w-full max-w-[1220px] px-3 pt-8 pb-6 sm:px-5 sm:pt-10">
-          <Pill tone="mint">
-            <span className={`size-1.5 rounded-full ${live ? "bg-mint live-dot" : "bg-down"}`} />
-            {live ? "Agent online" : "Agent degraded"}
-          </Pill>
+        <div className="relative mx-auto flex w-full max-w-[1220px] items-end justify-between gap-6 px-3 pt-8 pb-6 sm:px-5 sm:pt-10">
+          <div className="min-w-0">
+            <Pill tone="mint">
+              <span className={`size-1.5 rounded-full ${live ? "bg-mint live-dot" : "bg-down"}`} />
+              {live ? "Agent online" : "Agent degraded"}
+            </Pill>
 
-          <h1 className="mt-3 text-[30px] leading-[1.05] font-semibold tracking-tight text-ink sm:text-[42px]">
-            PumpXBT
-          </h1>
-          <p className="mt-1 text-[17px] font-medium tracking-tight text-mint-text sm:text-[20px]">
-            AI intelligence for Pump.fun.
-          </p>
-          <p className="mt-2.5 max-w-xl text-[13.5px] leading-relaxed text-muted">
-            Track launches, wallet flow, market momentum, verified calls, and on-chain activity in
-            one live feed.
-          </p>
+            <h1 className="mt-3 text-[30px] leading-[1.05] font-semibold tracking-tight text-ink sm:text-[42px]">
+              PumpXBT
+            </h1>
+            <p className="mt-1 text-[17px] font-medium tracking-tight text-mint-text sm:text-[20px]">
+              AI intelligence for Pump.fun.
+            </p>
+            <p className="mt-2.5 max-w-xl text-[13.5px] leading-relaxed text-muted">
+              Track launches, wallet flow, market momentum, verified calls, and on-chain activity in
+              one live feed.
+            </p>
+          </div>
+
+          {/* Mascot: appears automatically once public/brand/agent.png is committed. */}
+          <AgentMascot className="hidden w-[140px] shrink-0 sm:block lg:w-[172px] -mb-6" />
         </div>
       </section>
 
