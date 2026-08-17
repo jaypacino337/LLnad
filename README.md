@@ -80,8 +80,10 @@ Conservative by design:
   states something the site cannot substantiate;
 - it refuses to post at all from a snapshot it could not fetch.
 
-Driven by Vercel Cron (`vercel.json`, every 2 hours). Set `CRON_SECRET` to
-require `Authorization: Bearer <secret>`.
+Driven by Vercel Cron (`vercel.json`). The schedule is **daily** because
+Vercel's Hobby plan rejects deployments carrying more frequent crons; on a Pro
+plan, raise it (e.g. `0 */2 * * *`). Set `CRON_SECRET` to require
+`Authorization: Bearer <secret>`.
 
 ## API
 
