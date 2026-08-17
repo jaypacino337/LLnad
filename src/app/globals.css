@@ -1,0 +1,164 @@
+@import "tailwindcss";
+
+/*
+ * Light-first, crypto-native. White page, black text, one mint green that
+ * carries all the emphasis. No dark page background, no terminal styling.
+ */
+
+:root {
+  --bg: #ffffff;
+  --surface: #fbfcfb;
+  --raised: #f4f6f4;
+  --ink: #0a0c0a;
+  --ink-soft: #33383a;
+  --muted: #71787c;
+  --line: #e9ebe9;
+  --line-strong: #d6dad7;
+
+  /* Mint: solid fills use --mint; text on white uses --mint-text for contrast. */
+  --mint: #2fe07f;
+  --mint-strong: #16c96a;
+  --mint-text: #0a9d51;
+  --mint-ink: #04160c;
+  --mint-wash: #eefaf2;
+
+  --down: #e5484d;
+  --down-wash: #fdefef;
+  --pink: #ff5fa2;
+
+  --shadow-card: 0 1px 2px rgba(10, 12, 10, 0.04), 0 8px 24px -16px rgba(10, 12, 10, 0.12);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-mint: var(--mint);
+  --color-mint-strong: var(--mint-strong);
+  --color-mint-text: var(--mint-text);
+  --color-mint-ink: var(--mint-ink);
+  --color-mint-wash: var(--mint-wash);
+  --color-down: var(--down);
+  --color-down-wash: var(--down-wash);
+  --color-pink: var(--pink);
+
+  /* No webfonts: this environment has no egress to font CDNs, and system
+     stacks render instantly with no layout shift. */
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+* {
+  border-color: var(--line);
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Numbers should never jitter as they refresh. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+:where(a, button, input, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--mint-strong);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Agent online dot: one slow pulse, nothing more. */
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+
+.live-dot {
+  animation: live-pulse 2.4s ease-in-out infinite;
+}
+
+/* Fresh data lands with a single quiet tick, not a flash. */
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.row-in {
+  animation: row-in 0.22s ease-out;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--raised);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  animation: shimmer 1.4s infinite;
+}
+
+/* Very faint grid, used only behind the hero. */
+.grid-wash {
+  background-image:
+    linear-gradient(to right, rgba(10, 12, 10, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(10, 12, 10, 0.035) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+.thin-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
+}
