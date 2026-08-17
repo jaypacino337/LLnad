@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 
 import { isAutopostConfigured, missingAutopostEnv } from "@/lib/autopost";
 import { getMarketSnapshot } from "@/lib/market";
-import { getProState } from "@/lib/pro";
+import { proMissingEnv } from "@/lib/pro";
 import { deriveSignals } from "@/lib/signals";
-import { treasuryState, walletFlowState } from "@/lib/sources";
+import { treasuryMissingEnv } from "@/lib/treasury";
+import { walletMissingEnv } from "@/lib/wallets";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +13,6 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const snapshot = await getMarketSnapshot();
   const signals = deriveSignals(snapshot.tokens, 40);
-  const wallets = walletFlowState();
-  const treasury = treasuryState();
-  const pro = getProState();
 
   return NextResponse.json(
     {
@@ -24,10 +22,11 @@ export async function GET() {
       signals: signals.length,
       sources: {
         market: { provider: snapshot.source, live: snapshot.status === "live", error: snapshot.error },
-        walletFlow: { live: wallets.configured, missingEnv: wallets.missingEnv },
-        treasury: { live: treasury.configured, missingEnv: treasury.missingEnv },
-        autopost: { live: isAutopostConfigured(), missingEnv: missingAutopostEnv() },
-        pro: { configured: pro.configured, missingEnv: pro.missingEnv },
+        walletFlow: { configured: walletMissingEnv().length === 0, missingEnv: walletMissingEnv() },
+        treasury: { configured: treasuryMissingEnv().length === 0, missingEnv: treasuryMissingEnv() },
+        autopost: { configured: isAutopostConfigured(), missingEnv: missingAutopostEnv() },
+        pro: { configured: proMissingEnv().length === 0, missingEnv: proMissingEnv() },
+        calls: { publishing: Boolean(process.env.ADMIN_SECRET) },
       },
     },
     { headers: { "cache-control": "no-store" } },

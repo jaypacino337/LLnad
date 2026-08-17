@@ -1,8 +1,10 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 
 import { AgentFeed } from "@/components/agent-feed";
 import { MarketTable } from "@/components/market-table";
 import { TrendingList } from "@/components/trending-list";
+import { WalletFlowTable } from "@/components/wallet-flow";
 import {
   EmptyState,
   LockedPanel,
@@ -13,23 +15,34 @@ import {
   SectionHeader,
   SourceUnavailable,
 } from "@/components/ui";
-import { age, usd } from "@/lib/format";
+import { age, compact, shortAddress, usd } from "@/lib/format";
+import { callMultiple, getCalls } from "@/lib/calls";
 import { getMarketSnapshot, trending } from "@/lib/market";
-import { PRO_FEATURES, getProState } from "@/lib/pro";
+import { PRO_COOKIE, PRO_FEATURES, getProState } from "@/lib/pro";
 import { deriveSignals } from "@/lib/signals";
-import { getCalls, treasuryState, walletFlowState } from "@/lib/sources";
+import { getTreasury } from "@/lib/treasury";
+import { getWalletFlow } from "@/lib/wallets";
 
 // Live market data: never served from a static build.
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  const cookieStore = await cookies();
   const snapshot = await getMarketSnapshot();
+
+  const [flow, treasury, calls] = await Promise.all([
+    getWalletFlow(
+      snapshot.tokens
+        .filter((token) => token.isPumpFun)
+        .map((token) => ({ mint: token.tokenAddress, symbol: token.symbol, priceUsd: token.priceUsd })),
+    ),
+    getTreasury(),
+    getCalls(),
+  ]);
+
   const signals = deriveSignals(snapshot.tokens, 8);
   const momentum = trending(snapshot.tokens, 8);
-  const wallets = walletFlowState();
-  const treasury = treasuryState();
-  const pro = getProState();
-  const calls = getCalls();
+  const pro = getProState(cookieStore.get(PRO_COOKIE)?.value);
 
   const live = snapshot.status === "live";
   const totalVolume = snapshot.tokens.reduce((sum, token) => sum + (token.volume24h ?? 0), 0);
@@ -117,7 +130,7 @@ export default async function DashboardPage() {
             <SectionHeader
               title="Agent feed"
               meta={live ? `${signals.length} active` : undefined}
-              note="Deterministic rules over live market data"
+              action={{ label: "All signals", href: "/signals" }}
             />
             <Panel>
               {!live ? (
@@ -162,17 +175,17 @@ export default async function DashboardPage() {
               action={{ label: "Wallets", href: "/wallets" }}
             />
             <Panel>
-              {wallets.configured ? (
+              {flow.state === "unconfigured" ? (
+                <SourceUnavailable source="transaction indexer" needs={flow.missingEnv} compact />
+              ) : flow.state === "unavailable" ? (
+                <SourceUnavailable source="transaction indexer" detail={flow.error} compact />
+              ) : flow.rows.length === 0 ? (
                 <EmptyState
-                  title="No wallet activity yet"
-                  body="The indexer is configured. Clusters appear once repeated buyers are observed across tracked markets."
+                  title="No swaps observed"
+                  body="The indexer is live but returned no recent swaps for the tracked markets."
                 />
               ) : (
-                <SourceUnavailable
-                  source="transaction indexer"
-                  needs={wallets.missingEnv}
-                  compact
-                />
+                <WalletFlowTable rows={flow.rows.slice(0, 8)} />
               )}
             </Panel>
           </section>
@@ -185,31 +198,74 @@ export default async function DashboardPage() {
                   title="No verified calls yet"
                   body="Calls are recorded with entry market cap and tracked afterwards. The track record stays empty until the first one is published."
                 />
-              ) : null}
+              ) : (
+                <ul className="divide-y divide-line">
+                  {calls.slice(0, 5).map((call) => {
+                    const multiple = callMultiple(call);
+                    return (
+                      <li key={call.id} className="flex items-center gap-3 px-4 py-2.5">
+                        <span className="text-[13px] font-medium text-ink">${call.symbol}</span>
+                        <span className="font-mono text-[11px] text-muted tnum">
+                          in {usd(call.entryMarketCap)}
+                        </span>
+                        <span className="ml-auto font-mono text-[12px] tnum">
+                          {multiple ? (
+                            <span className={multiple >= 1 ? "text-mint-text" : "text-down"}>
+                              {multiple.toFixed(2)}x
+                            </span>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </span>
+                        <span className="font-mono text-[10.5px] text-muted">{call.status}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </Panel>
           </section>
         </div>
 
         {/* Treasury */}
         <section className="mt-8">
-          <SectionHeader title="Treasury & strategy" />
+          <SectionHeader
+            title="Treasury & strategy"
+            note={treasury.state === "live" ? shortAddress(treasury.wallet ?? "") : undefined}
+          />
           <Panel>
-            {treasury.configured ? (
-              <EmptyState
-                title="No treasury activity recorded"
-                body="The treasury wallet is configured. Positions and realised PnL appear once it transacts."
-              />
-            ) : (
+            {treasury.state === "unconfigured" ? (
               <SourceUnavailable source="treasury wallet" needs={treasury.missingEnv} compact />
+            ) : treasury.state === "unavailable" ? (
+              <SourceUnavailable source="treasury rpc" detail={treasury.error} compact />
+            ) : (
+              <div className="grid grid-cols-2 gap-px bg-line sm:grid-cols-4">
+                <MetricCard label="SOL balance" value={`${(treasury.solBalance ?? 0).toFixed(3)}`} />
+                <MetricCard label="Token positions" value={String(treasury.tokenBalances.length)} />
+                {treasury.tokenBalances.slice(0, 2).map((token) => (
+                  <MetricCard
+                    key={token.mint}
+                    label={shortAddress(token.mint)}
+                    value={compact(token.amount)}
+                  />
+                ))}
+              </div>
             )}
           </Panel>
+          {treasury.state === "live" ? (
+            <p className="mt-2 text-[11px] text-muted">
+              Balances only. PnL needs trade history this deployment does not hold, so none is shown.
+            </p>
+          ) : null}
         </section>
 
         {/* Pro */}
         <section id="pro" className="mt-8 scroll-mt-20">
           <SectionHeader
             title="Pro"
-            note={pro.configured ? "Token gated" : "Gating not configured"}
+            note={
+              pro.unlocked ? "Unlocked" : pro.configured ? "Token gated" : "Gating not configured"
+            }
           />
           <LockedPanel
             title="Pro intelligence"

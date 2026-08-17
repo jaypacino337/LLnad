@@ -54,9 +54,10 @@ arithmetic for.
 | Source | Credentials | Provides |
 | --- | --- | --- |
 | **Dexscreener** | **none** | Market feed, momentum, and every signal rule |
-| Transaction indexer | `HELIUS_API_KEY` | Per-wallet buys/sells, buyer clusters, creator wallet movement |
-| Treasury | `TREASURY_WALLET`, `SOLANA_RPC_URL` | Balance, deployed capital, positions, PnL |
-| Pro gating | `PUMPXBT_TOKEN_MINT`, `SOLANA_RPC_URL` | Holder verification |
+| Wallet flow | `HELIUS_API_KEY` | Per-wallet buys/sells and repeated-buyer clusters, fully implemented against Helius parsed swaps |
+| Treasury | `TREASURY_WALLET`, `SOLANA_RPC_URL` | SOL and token balances over plain JSON-RPC (PnL is deliberately absent — it needs trade history) |
+| Pro gating | `PUMPXBT_TOKEN_MINT`, `SOLANA_RPC_URL` | ed25519 wallet-signature verification plus an on-chain balance check |
+| Calls publishing | `ADMIN_SECRET` | Operator-only publish/close on the track record |
 | X autoposting | `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_TOKEN_SECRET` | Posts the strongest unposted signal |
 
 **The market feed needs no credentials.** A fresh deploy has real data
@@ -88,8 +89,38 @@ require `Authorization: Bearer <secret>`.
 | --- | --- | --- |
 | `GET` | `/api/market` | Indexed markets and trending symbols. 503 when upstream is down |
 | `GET` | `/api/signals` | Rule matches, tagged `kind: "deterministic-rules"` |
+| `GET` | `/api/wallets` | Wallet flow rows and repeat-buyer clusters (needs `HELIUS_API_KEY`) |
+| `GET` | `/api/treasury` | Treasury balances (needs `TREASURY_WALLET` + `SOLANA_RPC_URL`) |
+| `GET` | `/api/calls` | The public track record, with return multiples |
+| `POST`/`PATCH` | `/api/calls` | Publish or close a call. Requires `x-admin-key: $ADMIN_SECRET` |
+| `POST` | `/api/pro/verify` | Wallet-signature holder verification; sets the Pro session cookie |
 | `GET` | `/api/status` | Agent state and per-source configuration — good for uptime checks |
 | `GET`/`POST` | `/api/autopost` | Cron entry point for X |
+
+### Publishing a call
+
+```bash
+curl -X POST localhost:3000/api/calls \
+  -H 'content-type: application/json' -H "x-admin-key: $ADMIN_SECRET" \
+  -d '{"symbol":"TICKER","tokenAddress":"<mint>","entryMarketCap":120000}'
+```
+
+Open calls are refreshed against the market source on read; current and peak
+market cap stay `null` until the source can be reached. The call store is a
+JSON file under `PUMPXBT_DATA_DIR` — on serverless hosts the filesystem is
+ephemeral, so production should mount storage there or swap `src/lib/calls.ts`
+for a database.
+
+### Pro unlock flow
+
+1. the client signs `PumpXBT Pro verification\nwallet: <addr>\nts: <ms>` with
+   Phantom (`window.solana.signMessage`);
+2. `/api/pro/verify` checks the ed25519 signature (timestamp bounds replay),
+   reads the wallet's PUMPXBT balance over RPC, and
+3. a positive balance earns a 24h HttpOnly HMAC-signed cookie.
+
+No dependency on web3.js — base58 and signature verification live in
+`src/lib/solana.ts` on node:crypto.
 
 ## Getting started
 

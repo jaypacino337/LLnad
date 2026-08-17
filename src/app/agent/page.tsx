@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 
 import { AgentStatus } from "@/components/agent-status";
+import { ProUnlock } from "@/components/pro-unlock";
 import {
   LockedPanel,
   MetricCard,
@@ -12,9 +14,10 @@ import {
 import { age } from "@/lib/format";
 import { isAutopostConfigured, missingAutopostEnv } from "@/lib/autopost";
 import { getMarketSnapshot } from "@/lib/market";
-import { PRO_FEATURES, getProState } from "@/lib/pro";
+import { PRO_COOKIE, PRO_FEATURES, getProState } from "@/lib/pro";
 import { deriveSignals } from "@/lib/signals";
-import { treasuryState, walletFlowState } from "@/lib/sources";
+import { treasuryMissingEnv } from "@/lib/treasury";
+import { walletMissingEnv } from "@/lib/wallets";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +27,11 @@ export const metadata: Metadata = {
 };
 
 export default async function AgentPage() {
+  const cookieStore = await cookies();
   const snapshot = await getMarketSnapshot();
   const signals = deriveSignals(snapshot.tokens, 40);
   const live = snapshot.status === "live";
+  const pro = getProState(cookieStore.get(PRO_COOKIE)?.value);
 
   const sources = [
     {
@@ -47,17 +52,31 @@ export default async function AgentPage() {
     },
     {
       name: "Wallet flow",
-      provider: "transaction indexer",
-      live: walletFlowState().configured,
-      detail: walletFlowState().provides,
-      needs: walletFlowState().missingEnv,
+      provider: "helius indexer",
+      live: walletMissingEnv().length === 0,
+      detail: "per-wallet buys and sells, repeated-buyer clusters",
+      needs: walletMissingEnv(),
     },
     {
       name: "Treasury",
       provider: "solana rpc",
-      live: treasuryState().configured,
-      detail: treasuryState().provides,
-      needs: treasuryState().missingEnv,
+      live: treasuryMissingEnv().length === 0,
+      detail: "SOL and token balances of the treasury wallet",
+      needs: treasuryMissingEnv(),
+    },
+    {
+      name: "Pro gating",
+      provider: "wallet signature + rpc",
+      live: pro.configured,
+      detail: "ed25519 signature verification plus an on-chain balance check",
+      needs: pro.missingEnv,
+    },
+    {
+      name: "Calls publishing",
+      provider: "admin api",
+      live: Boolean(process.env.ADMIN_SECRET),
+      detail: "operator-only POST /api/calls with an entry market cap",
+      needs: process.env.ADMIN_SECRET ? [] : ["ADMIN_SECRET"],
     },
     {
       name: "X autoposting",
@@ -155,12 +174,14 @@ export default async function AgentPage() {
       ) : null}
 
       <section id="pro" className="mt-8 scroll-mt-20">
-        <SectionHeader title="Pro" note={getProState().configured ? "Token gated" : "Not configured"} />
-        <LockedPanel
-          title="Pro intelligence"
-          features={PRO_FEATURES}
-          requirement={getProState().requirement}
+        <SectionHeader
+          title="Pro"
+          note={pro.unlocked ? "Unlocked" : pro.configured ? "Token gated" : "Not configured"}
         />
+        <LockedPanel title="Pro intelligence" features={PRO_FEATURES} requirement={pro.requirement} />
+        <div className="mt-3">
+          <ProUnlock configured={pro.configured && !pro.unlocked} />
+        </div>
       </section>
     </div>
   );

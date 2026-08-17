@@ -1,36 +1,88 @@
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+
 /**
- * Token gating.
+ * Pro token gating.
  *
- * Verifying a holder requires an RPC endpoint and the token mint, so Pro stays
- * locked until both are configured and a wallet has been verified. There is no
- * "pretend unlocked" path — an unconfigured deployment reports itself as
- * unconfigured rather than showing Pro data.
+ * A holder proves ownership by signing a short message with their wallet; the
+ * server verifies the ed25519 signature, checks the wallet's PUMPXBT balance
+ * over RPC, and issues an HMAC-signed session cookie. There is no
+ * "pretend unlocked" path: without the mint and an RPC endpoint configured,
+ * the section reports itself unconfigured.
  */
 
+export const PRO_ENV = ["PUMPXBT_TOKEN_MINT", "SOLANA_RPC_URL"] as const;
+
+export const PRO_COOKIE = "pumpxbt_pro";
+export const PRO_SESSION_HOURS = 24;
+/** Signed verification messages are valid for this long. */
+export const PRO_MESSAGE_WINDOW_MS = 10 * 60 * 1000;
+
 export interface ProState {
-  /** Both the mint and an RPC endpoint are present. */
   configured: boolean;
-  /** True only for a verified holder. Always false until wallet auth is wired. */
   unlocked: boolean;
-  /** What an operator needs to do next. */
+  wallet: string | null;
   requirement: string;
   missingEnv: string[];
 }
 
-export const PRO_ENV = ["PUMPXBT_TOKEN_MINT", "SOLANA_RPC_URL"] as const;
+export function proMissingEnv(): string[] {
+  return PRO_ENV.filter((key) => !process.env[key]);
+}
 
-export function getProState(): ProState {
-  const missingEnv = PRO_ENV.filter((key) => !process.env[key]);
+/**
+ * Session signing key: PRO_SESSION_SECRET when set, otherwise a per-process
+ * random key — sessions then reset on restart, which is safe, just less
+ * convenient. Never a hardcoded constant.
+ */
+const sessionKey: Buffer = process.env.PRO_SESSION_SECRET
+  ? Buffer.from(process.env.PRO_SESSION_SECRET, "utf8")
+  : randomBytes(32);
+
+function hmac(payload: string): string {
+  return createHmac("sha256", sessionKey).update(payload).digest("base64url");
+}
+
+/** Issues "wallet.expiresMs.signature". */
+export function createProSession(wallet: string, now = Date.now()): string {
+  const expires = now + PRO_SESSION_HOURS * 3_600_000;
+  const payload = `${wallet}.${expires}`;
+  return `${payload}.${hmac(payload)}`;
+}
+
+/** Returns the wallet for a valid, unexpired session token; null otherwise. */
+export function verifyProSession(token: string | undefined, now = Date.now()): string | null {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [wallet, expiresRaw, signature] = parts;
+  const expires = Number.parseInt(expiresRaw, 10);
+  if (!Number.isFinite(expires) || expires < now) return null;
+
+  const expected = Buffer.from(hmac(`${wallet}.${expires}`));
+  const provided = Buffer.from(signature);
+  if (expected.length !== provided.length) return null;
+  return timingSafeEqual(expected, provided) ? wallet : null;
+}
+
+/** The exact message a wallet must sign. Timestamp bounds replay. */
+export function proMessage(wallet: string, timestampMs: number): string {
+  return `PumpXBT Pro verification\nwallet: ${wallet}\nts: ${timestampMs}`;
+}
+
+export function getProState(sessionToken?: string): ProState {
+  const missingEnv = proMissingEnv();
   const configured = missingEnv.length === 0;
+  const wallet = configured ? verifyProSession(sessionToken) : null;
 
   return {
     configured,
-    // Holder verification is a wallet-signature flow; nothing is unlocked
-    // server-side without it.
-    unlocked: false,
-    requirement: configured
-      ? "Connect a wallet holding PUMPXBT to unlock."
-      : `Gating is not configured. Set ${missingEnv.join(" and ")}.`,
+    unlocked: wallet !== null,
+    wallet,
+    requirement: !configured
+      ? `Gating is not configured. Set ${missingEnv.join(" and ")}.`
+      : wallet
+        ? `Verified holder ${wallet.slice(0, 4)}…${wallet.slice(-4)}.`
+        : "Connect a wallet holding PUMPXBT to unlock.",
     missingEnv: [...missingEnv],
   };
 }
