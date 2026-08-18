@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { composePost, markPosted, missingAutopostEnv, runAutopost, selectForPost } from "../src/lib/autopost.ts";
+import {
+  buildOAuthHeader,
+  composePost,
+  markPosted,
+  missingAutopostEnv,
+  oauthSignature,
+  runAutopost,
+  selectForPost,
+} from "../src/lib/autopost.ts";
 import type { Signal } from "../src/lib/signals.ts";
 
 function signal(overrides: Partial<Signal> = {}): Signal {
@@ -60,4 +68,57 @@ test("with nothing qualifying the runner skips", async () => {
   const result = await runAutopost([signal({ id: "too-weak", strength: 0.2 })]);
   assert.equal(result.outcome, "skipped");
   assert.equal(result.text, null);
+});
+
+/**
+ * The exact example from X's "Creating a signature" documentation. If this
+ * signature matches, the HMAC construction, RFC 3986 encoding and parameter
+ * sorting are all correct — the parts of OAuth 1.0a that actually go wrong.
+ */
+const X_DOC_VECTOR = {
+  url: "https://api.twitter.com/1.1/statuses/update.json",
+  bodyParams: {
+    status: "Hello Ladies + Gentlemen, a signed OAuth request!",
+    include_entities: "true",
+  },
+  credentials: {
+    consumerKey: "xvz1evFS4wEEPTGEFPHBog",
+    consumerSecret: "kAcSOqF21Fu85e7zjz7ZN2U4ZRhfV3WpwPAoE3Z7kBw",
+    accessToken: "370773112-GmHxMAgYyLbNEtIKZeRNFsMKPR9EyMZeS9weJAEb",
+    accessTokenSecret: "LswwdoUaIvS8ltyTt5jkRh4J50vUPVVHtR2YPi5kE",
+  },
+  nonce: "kYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg",
+  timestampSec: 1318622958,
+  expectedSignature: "hCtSmYh+iHYCEqBWrE7C7hYmtUk=",
+};
+
+test("the OAuth signature matches X's documented test vector", () => {
+  const v = X_DOC_VECTOR;
+  const signature = oauthSignature(
+    "POST",
+    v.url,
+    {
+      ...v.bodyParams,
+      oauth_consumer_key: v.credentials.consumerKey,
+      oauth_nonce: v.nonce,
+      oauth_signature_method: "HMAC-SHA1",
+      oauth_timestamp: String(v.timestampSec),
+      oauth_token: v.credentials.accessToken,
+      oauth_version: "1.0",
+    },
+    v.credentials.consumerSecret,
+    v.credentials.accessTokenSecret,
+  );
+  assert.equal(signature, v.expectedSignature);
+});
+
+test("the Authorization header carries that signature, percent-encoded", () => {
+  const v = X_DOC_VECTOR;
+  const header = buildOAuthHeader("POST", v.url, v.bodyParams, v.credentials, v.nonce, v.timestampSec);
+  assert.match(header, /^OAuth /);
+  assert.ok(header.includes('oauth_signature="hCtSmYh%2BiHYCEqBWrE7C7hYmtUk%3D"'));
+  assert.ok(header.includes(`oauth_nonce="${v.nonce}"`));
+  assert.ok(header.includes('oauth_version="1.0"'));
+  // Body params are signed but never appear in the header itself.
+  assert.equal(header.includes("status="), false);
 });

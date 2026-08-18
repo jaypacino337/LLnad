@@ -10,6 +10,8 @@
  *    account never states something the site cannot substantiate.
  */
 
+import { createHmac } from "node:crypto";
+
 import type { Signal } from "./signals";
 
 export const X_ENV = [
@@ -64,44 +66,103 @@ export function markPosted(signalId: string): void {
   }
 }
 
-/**
- * Posts to X using OAuth 1.0a. Kept in one place so the credential handling and
- * the failure path are easy to audit.
- */
-async function postToX(text: string): Promise<void> {
-  const { createHmac, randomBytes } = await import("node:crypto");
+/* --- OAuth 1.0a --------------------------------------------------------------
+   Pure functions, exported so the signing can be verified against the test
+   vector in X's own "Creating a signature" documentation. */
 
-  const url = "https://api.twitter.com/2/tweets";
+export interface OAuthCredentials {
+  consumerKey: string;
+  consumerSecret: string;
+  accessToken: string;
+  accessTokenSecret: string;
+}
+
+/** RFC 3986 percent-encoding, stricter than encodeURIComponent. */
+function percentEncode(value: string): string {
+  return encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+}
+
+/**
+ * HMAC-SHA1 signature over method, url and the full parameter set (oauth
+ * params plus, for form-encoded requests, the body params). The v2 JSON API
+ * signs only the oauth params; the extra-params path exists so the
+ * implementation can be checked against X's documented example, which uses a
+ * form-encoded request.
+ */
+export function oauthSignature(
+  method: string,
+  url: string,
+  params: Record<string, string>,
+  consumerSecret: string,
+  tokenSecret: string,
+): string {
+  const paramString = Object.keys(params)
+    .sort()
+    .map((key) => `${percentEncode(key)}=${percentEncode(params[key])}`)
+    .join("&");
+
+  const baseString = [method.toUpperCase(), percentEncode(url), percentEncode(paramString)].join("&");
+  const signingKey = `${percentEncode(consumerSecret)}&${percentEncode(tokenSecret)}`;
+  return createHmac("sha1", signingKey).update(baseString).digest("base64");
+}
+
+/** The Authorization header for one request. Nonce and timestamp are inputs
+    so the function stays deterministic and testable. */
+export function buildOAuthHeader(
+  method: string,
+  url: string,
+  extraParams: Record<string, string>,
+  credentials: OAuthCredentials,
+  nonce: string,
+  timestampSec: number,
+): string {
   const oauth: Record<string, string> = {
-    oauth_consumer_key: process.env.X_API_KEY!,
-    oauth_nonce: randomBytes(16).toString("hex"),
+    oauth_consumer_key: credentials.consumerKey,
+    oauth_nonce: nonce,
     oauth_signature_method: "HMAC-SHA1",
-    oauth_timestamp: String(Math.floor(Date.now() / 1000)),
-    oauth_token: process.env.X_ACCESS_TOKEN!,
+    oauth_timestamp: String(timestampSec),
+    oauth_token: credentials.accessToken,
     oauth_version: "1.0",
   };
 
-  const encode = (value: string) =>
-    encodeURIComponent(value).replace(
-      /[!'()*]/g,
-      (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
-    );
+  oauth.oauth_signature = oauthSignature(
+    method,
+    url,
+    { ...oauth, ...extraParams },
+    credentials.consumerSecret,
+    credentials.accessTokenSecret,
+  );
 
-  const paramString = Object.keys(oauth)
+  return `OAuth ${Object.keys(oauth)
     .sort()
-    .map((key) => `${encode(key)}=${encode(oauth[key])}`)
-    .join("&");
-
-  const baseString = ["POST", encode(url), encode(paramString)].join("&");
-  const signingKey = `${encode(process.env.X_API_SECRET!)}&${encode(
-    process.env.X_ACCESS_TOKEN_SECRET!,
-  )}`;
-  oauth.oauth_signature = createHmac("sha1", signingKey).update(baseString).digest("base64");
-
-  const header = `OAuth ${Object.keys(oauth)
-    .sort()
-    .map((key) => `${encode(key)}="${encode(oauth[key])}"`)
+    .map((key) => `${percentEncode(key)}="${percentEncode(oauth[key])}"`)
     .join(", ")}`;
+}
+
+/**
+ * Posts to X. The v2 tweets endpoint takes a JSON body, which OAuth 1.0a does
+ * not sign — only the oauth params enter the signature.
+ */
+async function postToX(text: string): Promise<void> {
+  const { randomBytes } = await import("node:crypto");
+  const url = "https://api.twitter.com/2/tweets";
+
+  const header = buildOAuthHeader(
+    "POST",
+    url,
+    {},
+    {
+      consumerKey: process.env.X_API_KEY!,
+      consumerSecret: process.env.X_API_SECRET!,
+      accessToken: process.env.X_ACCESS_TOKEN!,
+      accessTokenSecret: process.env.X_ACCESS_TOKEN_SECRET!,
+    },
+    randomBytes(16).toString("hex"),
+    Math.floor(Date.now() / 1000),
+  );
 
   const response = await fetch(url, {
     method: "POST",
