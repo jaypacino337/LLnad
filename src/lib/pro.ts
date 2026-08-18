@@ -6,11 +6,12 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
  * A holder proves ownership by signing a short message with their wallet; the
  * server verifies the ed25519 signature, checks the wallet's PUMPXBT balance
  * over RPC, and issues an HMAC-signed session cookie. There is no
- * "pretend unlocked" path: without the mint and an RPC endpoint configured,
- * the section reports itself unconfigured.
+ * "pretend unlocked" path: without the mint configured, the section reports
+ * itself unconfigured. The RPC defaults to Solana's public endpoint.
  */
 
-export const PRO_ENV = ["PUMPXBT_TOKEN_MINT", "SOLANA_RPC_URL"] as const;
+/** Only the mint is required — the RPC defaults to Solana's public endpoint. */
+export const PRO_ENV = ["PUMPXBT_TOKEN_MINT"] as const;
 
 export const PRO_COOKIE = "pumpxbt_pro";
 export const PRO_SESSION_HOURS = 24;

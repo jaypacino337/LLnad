@@ -1,4 +1,4 @@
-import { rpc } from "./solana";
+import { rpc, solanaRpcUrl } from "./solana";
 
 /**
  * Treasury reading: real balances from the configured wallet over plain
@@ -7,7 +7,8 @@ import { rpc } from "./solana";
  * the no-fabrication rule.
  */
 
-export const TREASURY_ENV = ["TREASURY_WALLET", "SOLANA_RPC_URL"] as const;
+/** Only the wallet address is required — the RPC defaults to Solana's public endpoint. */
+export const TREASURY_ENV = ["TREASURY_WALLET"] as const;
 
 export interface TreasuryTokenBalance {
   mint: string;
@@ -44,7 +45,7 @@ export async function getTreasury(): Promise<TreasurySnapshot> {
   }
 
   const wallet = process.env.TREASURY_WALLET!;
-  const rpcUrl = process.env.SOLANA_RPC_URL!;
+  const rpcUrl = solanaRpcUrl();
 
   try {
     interface Lamports {

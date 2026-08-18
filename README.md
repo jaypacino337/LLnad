@@ -55,10 +55,14 @@ arithmetic for.
 | --- | --- | --- |
 | **Dexscreener** | **none** | Market feed, momentum, and every signal rule |
 | Wallet flow | `HELIUS_API_KEY` | Per-wallet buys/sells and repeated-buyer clusters, fully implemented against Helius parsed swaps |
-| Treasury | `TREASURY_WALLET`, `SOLANA_RPC_URL` | SOL and token balances over plain JSON-RPC (PnL is deliberately absent — it needs trade history) |
-| Pro gating | `PUMPXBT_TOKEN_MINT`, `SOLANA_RPC_URL` | ed25519 wallet-signature verification plus an on-chain balance check |
+| Treasury | `TREASURY_WALLET` (public address only) | SOL and token balances over JSON-RPC (PnL is deliberately absent — it needs trade history) |
+| Pro gating | `PUMPXBT_TOKEN_MINT` (public mint only) | ed25519 wallet-signature verification plus an on-chain balance check |
 | Calls publishing | `ADMIN_SECRET` | Operator-only publish/close on the track record |
 | X autoposting | `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_TOKEN_SECRET` | Posts the strongest unposted signal |
+
+RPC access defaults to Solana's free public endpoint, so treasury and Pro
+need only **public addresses** — no key, and never a private key: nothing in
+this product uses one.
 
 **The market feed needs no credentials.** A fresh deploy has real data
 immediately. Everything else renders an honest "needs `VAR`" state until
@@ -92,7 +96,7 @@ plan, raise it (e.g. `0 */2 * * *`). Set `CRON_SECRET` to require
 | `GET` | `/api/market` | Indexed markets and trending symbols. 503 when upstream is down |
 | `GET` | `/api/signals` | Rule matches, tagged `kind: "deterministic-rules"` |
 | `GET` | `/api/wallets` | Wallet flow rows and repeat-buyer clusters (needs `HELIUS_API_KEY`) |
-| `GET` | `/api/treasury` | Treasury balances (needs `TREASURY_WALLET` + `SOLANA_RPC_URL`) |
+| `GET` | `/api/treasury` | Treasury balances (needs `TREASURY_WALLET`) |
 | `GET` | `/api/calls` | The public track record, with return multiples |
 | `POST`/`PATCH` | `/api/calls` | Publish or close a call. Requires `x-admin-key: $ADMIN_SECRET` |
 | `POST` | `/api/pro/verify` | Wallet-signature holder verification; sets the Pro session cookie |

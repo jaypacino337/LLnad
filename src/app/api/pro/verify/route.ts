@@ -8,7 +8,7 @@ import {
   proMessage,
   proMissingEnv,
 } from "@/lib/pro";
-import { getTokenBalance, verifySolanaSignature } from "@/lib/solana";
+import { getTokenBalance, solanaRpcUrl, verifySolanaSignature } from "@/lib/solana";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
 
   let balance: number;
   try {
-    balance = await getTokenBalance(process.env.SOLANA_RPC_URL!, wallet, process.env.PUMPXBT_TOKEN_MINT!);
+    balance = await getTokenBalance(solanaRpcUrl(), wallet, process.env.PUMPXBT_TOKEN_MINT!);
   } catch (error) {
     return NextResponse.json(
       { error: "rpc_unavailable", detail: error instanceof Error ? error.message : "rpc failed" },

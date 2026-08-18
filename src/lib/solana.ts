@@ -83,6 +83,17 @@ export function verifySolanaSignature(
   }
 }
 
+/**
+ * Solana's public mainnet RPC needs no key, so balance reads work with no
+ * credentials at all. Rate-limited but fine for this app's read volume; set
+ * SOLANA_RPC_URL to a dedicated endpoint to override.
+ */
+export const DEFAULT_SOLANA_RPC = "https://api.mainnet-beta.solana.com";
+
+export function solanaRpcUrl(): string {
+  return process.env.SOLANA_RPC_URL || DEFAULT_SOLANA_RPC;
+}
+
 interface RpcResponse<T> {
   result?: T;
   error?: { code: number; message: string };
