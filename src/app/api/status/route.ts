@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { isAutopostConfigured, missingAutopostEnv } from "@/lib/autopost";
+import { accountCount } from "@/lib/game-store";
 import { getMarketSnapshot } from "@/lib/market";
-import { proMissingEnv } from "@/lib/pro";
+import { rewardGate } from "@/lib/player";
 import { deriveSignals } from "@/lib/signals";
-import { treasuryMissingEnv } from "@/lib/treasury";
-import { walletMissingEnv } from "@/lib/wallets";
 
 export const dynamic = "force-dynamic";
 
@@ -13,20 +12,24 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const snapshot = await getMarketSnapshot();
   const signals = deriveSignals(snapshot.tokens, 40);
+  const gate = rewardGate();
 
   return NextResponse.json(
     {
-      agent: snapshot.status === "live" ? "online" : "degraded",
+      game: snapshot.status === "live" ? "trading" : "paused",
       lastIndexedAt: snapshot.fetchedAt,
       marketsIndexed: snapshot.tokens.length,
       signals: signals.length,
+      players: await accountCount(),
       sources: {
-        market: { provider: snapshot.source, live: snapshot.status === "live", error: snapshot.error },
-        walletFlow: { configured: walletMissingEnv().length === 0, missingEnv: walletMissingEnv() },
-        treasury: { configured: treasuryMissingEnv().length === 0, missingEnv: treasuryMissingEnv() },
+        prices: { provider: snapshot.source, live: snapshot.status === "live", error: snapshot.error },
+        rewardGate: {
+          configured: gate.configured,
+          minHold: gate.configured ? gate.minHold : null,
+          symbol: gate.symbol,
+          missingEnv: gate.configured ? [] : ["HOODST_TOKEN_MINT"],
+        },
         autopost: { configured: isAutopostConfigured(), missingEnv: missingAutopostEnv() },
-        pro: { configured: proMissingEnv().length === 0, missingEnv: proMissingEnv() },
-        calls: { publishing: Boolean(process.env.ADMIN_SECRET) },
       },
     },
     { headers: { "cache-control": "no-store" } },

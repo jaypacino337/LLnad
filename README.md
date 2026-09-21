@@ -1,171 +1,111 @@
-# PumpXBT
+# Hood ST
 
-**AI intelligence for Pump.fun.**
+**Paper trading league for Pump.fun.**
 
-Track launches, wallet flow, market momentum, verified calls, and on-chain
-activity in one live feed.
+Every wallet gets a $10,000 paper balance. Long or short live Pump.fun markets
+with up to 20x leverage — real prices, zero risk — and compete in daily, weekly
+and monthly leagues ranked by return.
 
-A light, crypto-native intelligence terminal: white page, black text, one mint
-green carrying the emphasis. Dense tables, compact cards, mono for numbers only.
+White page, black text, one mint green. Mono for numbers. No real funds, ever.
 
 ## Routes
 
 | Route | What it does |
 | --- | --- |
-| `/` | Dashboard: agent status, live market feed, agent feed, momentum, wallet flow, calls, treasury, Pro |
-| `/signals` | Every active rule match, plus the full rule set with its thresholds |
-| `/wallets` | Wallet and cluster flow |
-| `/calls` | Call track record — entry, current and peak market cap |
-| `/agent` | What is indexed, how signals are derived, and per-source live state |
+| `/` | Markets, your account, today's league, live signals |
+| `/trade` | Order ticket: side, margin, leverage, live entry and liquidation preview |
+| `/leaderboard` | Daily / weekly / monthly leagues with reward-eligibility badges |
+| `/portfolio` | Equity, open positions with close buttons, trade history |
+| `/rules` | The five rules and the exact arithmetic |
+| `/signals` | Deterministic rule matches over live market data |
+
+## The game
+
+- **$10,000** paper balance per wallet, created at first sign-in
+- **Isolated margin**: minimum $10, up to 10 open positions
+- **Leverage 1–20x**; a position liquidates when its loss reaches its margin
+  (settled exactly at the liquidation price — the margin is lost, never more)
+- **No fees, no funding** — stated, not hidden
+- **Leagues** on UTC boundaries, ranked by *return over the period* (equity now
+  vs equity when the period started), so late joiners start flat
+- **Money settles in cents** at every realisation boundary
+
+The full arithmetic is on `/rules` and implemented in `src/lib/game.ts` as pure
+functions with tests over every branch, including exact liquidation-boundary
+behaviour and ISO-week year rollovers.
 
 ## Data integrity
 
-This is the part that matters most, so it is stated plainly.
+**No price is ever invented.** Fills, marks and liquidations all use live
+prices from Dexscreener (no API key needed). When the source is unreachable:
+trading pauses with an honest message, unpriced positions display escrowed
+margin instead of a guessed PnL and cannot be closed, and the UI says exactly
+what is down. Open positions stay priceable even after a token rotates out of
+the discovery list via direct per-address lookups.
 
-**Nothing in this app is fabricated.** Every number rendered is a field returned
-by a live API. There is no seed data, no sample rows, no placeholder metrics, and
-no "AI confidence" that is not arithmetic.
+Signals are the same six deterministic rules as before — thresholds over
+returned fields, each entry quoting its numbers, tagged
+`kind: "deterministic-rules"` in the API.
 
-When a source cannot be reached, the UI says so — source name and upstream
-reason — and shows nothing else. `/api/market` and `/api/signals` return **503**
-in that state rather than an empty success, so a monitor sees the truth.
+## Identity and rewards
 
-### Signals are rules, not predictions
+You are your wallet. Signing in = signing a short timestamped message with
+Phantom; the server verifies the ed25519 signature (no web3.js — base58 and
+verification live in `src/lib/solana.ts` on node:crypto) and issues an
+HMAC-signed HttpOnly session cookie.
 
-The agent feed runs six deterministic rules over live market fields. Each one is
-a threshold, each entry quotes the figures it used, and the same snapshot always
-produces the same output.
+**Nothing here takes a private key.** Anything that asks for one is a scam.
 
-| Rule | Fires when |
-| --- | --- |
-| Volume acceleration | 1h volume ≥ 2x the average hour of the last six, and 1h volume > $5k |
-| Momentum | 1h change ≥ +15% on top of a positive 6h change |
-| Buy pressure | ≥66% of the last hour's trades are buys, over ≥40 trades |
-| Sell pressure | ≥66% of the last hour's trades are sells, over ≥40 trades |
-| Thin liquidity | Market cap ≥ 25x pooled liquidity |
-| New launch | Pair under 6h old with > $10k traded in the last hour |
+League placement is open to everyone. Reward *payouts* are gated: set
+`HOODST_TOKEN_MINT` (public mint address) and `HOODST_MIN_HOLD`, and each
+sign-in checks the wallet's balance on-chain (public RPC by default), showing an
+eligibility badge on the boards. Unconfigured gating fails closed — no badge for
+anyone rather than a fake one.
 
-Strength is how far past its threshold a measurement sits. The UI labels these as
-rules deliberately: the product does not claim an inference it cannot show the
-arithmetic for.
+## Configuration
 
-## Sources
+Markets, trading and leagues need **no credentials at all.**
 
-| Source | Credentials | Provides |
+| Variable | Required | Purpose |
 | --- | --- | --- |
-| **Dexscreener** | **none** | Market feed, momentum, and every signal rule |
-| Wallet flow | `HELIUS_API_KEY` | Per-wallet buys/sells and repeated-buyer clusters, fully implemented against Helius parsed swaps |
-| Treasury | `TREASURY_WALLET` (public address only) | SOL and token balances over JSON-RPC (PnL is deliberately absent — it needs trade history) |
-| Pro gating | `PUMPXBT_TOKEN_MINT` (public mint only) | ed25519 wallet-signature verification plus an on-chain balance check |
-| Calls publishing | `ADMIN_SECRET` | Operator-only publish/close on the track record |
-| X autoposting | `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_TOKEN_SECRET` | Posts the strongest unposted signal |
+| `HOODST_TOKEN_MINT` | for reward badges | Public mint of the reward token |
+| `HOODST_MIN_HOLD` | optional (default 1) | Minimum holding for eligibility |
+| `NEXT_PUBLIC_HOLD_SYMBOL` | optional | Ticker shown in copy (default `$HOODST`) |
+| `SOLANA_RPC_URL` | optional | Dedicated RPC; defaults to the free public endpoint |
+| `HOODST_SESSION_SECRET` | recommended | Sessions survive restarts |
+| `HOODST_DATA_DIR` | production | Where `game.json` lives — see persistence below |
+| `NEXT_PUBLIC_SITE_URL` | recommended | Absolute URLs in social cards |
+| `X_API_KEY` `X_API_SECRET` `X_ACCESS_TOKEN` `X_ACCESS_TOKEN_SECRET` | for autoposting | Posts the strongest signal (daily cron) |
+| `CRON_SECRET` | recommended | Locks `/api/autopost` |
 
-RPC access defaults to Solana's free public endpoint, so treasury and Pro
-need only **public addresses** — no key, and never a private key: nothing in
-this product uses one.
-
-**The market feed needs no credentials.** A fresh deploy has real data
-immediately. Everything else renders an honest "needs `VAR`" state until
-configured — wallet-level flow genuinely cannot be derived from Dexscreener,
-which aggregates pairs rather than wallets.
-
-Copy `.env.example` to `.env.local` to configure any of it.
-
-## X autoposting
-
-Conservative by design:
-
-- nothing is sent unless all four X credentials are present;
-- without them `/api/autopost` still runs and returns the composed post as a
-  **dry run**, so a schedule can be validated before going live;
-- a signal is posted at most once;
-- only signals at strength ≥ 0.6 qualify;
-- posts are composed from the same rules the UI shows, so the account never
-  states something the site cannot substantiate;
-- it refuses to post at all from a snapshot it could not fetch.
-
-Driven by Vercel Cron (`vercel.json`). The schedule is **daily** because
-Vercel's Hobby plan rejects deployments carrying more frequent crons; on a Pro
-plan, raise it (e.g. `0 */2 * * *`). Set `CRON_SECRET` to require
-`Authorization: Bearer <secret>`.
+**Persistence:** accounts live in one JSON document with atomic writes and
+cross-instance reload. On serverless hosts the filesystem is ephemeral — fine
+for trying it out, but real league standings need `HOODST_DATA_DIR` on mounted
+storage or `src/lib/game-store.ts` reimplemented on a database. That module is
+the only thing to swap.
 
 ## API
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| `GET` | `/api/market` | Indexed markets and trending symbols. 503 when upstream is down |
-| `GET` | `/api/signals` | Rule matches, tagged `kind: "deterministic-rules"` |
-| `GET` | `/api/wallets` | Wallet flow rows and repeat-buyer clusters (needs `HELIUS_API_KEY`) |
-| `GET` | `/api/treasury` | Treasury balances (needs `TREASURY_WALLET`) |
-| `GET` | `/api/calls` | The public track record, with return multiples |
-| `POST`/`PATCH` | `/api/calls` | Publish or close a call. Requires `x-admin-key: $ADMIN_SECRET` |
-| `POST` | `/api/pro/verify` | Wallet-signature holder verification; sets the Pro session cookie |
-| `GET` | `/api/status` | Agent state and per-source configuration — good for uptime checks |
+| `GET` | `/api/market` | Tradeable markets. 503 when upstream is down |
+| `GET` | `/api/signals` | Rule matches |
+| `POST` | `/api/auth/verify` | Wallet-signature sign-in; sets the session cookie |
+| `POST` | `/api/auth/logout` | Clears the session |
+| `GET` | `/api/account` | Your account, marked to live prices (401 signed out) |
+| `POST` | `/api/trade/open` | `{tokenAddress, symbol, side, marginUsd, leverage}` |
+| `POST` | `/api/trade/close` | `{positionId}` — 503 rather than a made-up fill when unpriced |
+| `GET` | `/api/leaderboard?period=daily\|weekly\|monthly` | Ranked rows with eligibility |
+| `GET` | `/api/status` | Health: prices, players, gate, autopost |
 | `GET`/`POST` | `/api/autopost` | Cron entry point for X |
-
-### Publishing a call
-
-```bash
-curl -X POST localhost:3000/api/calls \
-  -H 'content-type: application/json' -H "x-admin-key: $ADMIN_SECRET" \
-  -d '{"symbol":"TICKER","tokenAddress":"<mint>","entryMarketCap":120000}'
-```
-
-Open calls are refreshed against the market source on read; current and peak
-market cap stay `null` until the source can be reached. The call store is a
-JSON file under `PUMPXBT_DATA_DIR` — on serverless hosts the filesystem is
-ephemeral, so production should mount storage there or swap `src/lib/calls.ts`
-for a database.
-
-### Pro unlock flow
-
-1. the client signs `PumpXBT Pro verification\nwallet: <addr>\nts: <ms>` with
-   Phantom (`window.solana.signMessage`);
-2. `/api/pro/verify` checks the ed25519 signature (timestamp bounds replay),
-   reads the wallet's PUMPXBT balance over RPC, and
-3. a positive balance earns a 24h HttpOnly HMAC-signed cookie.
-
-No dependency on web3.js — base58 and signature verification live in
-`src/lib/solana.ts` on node:crypto.
 
 ## Getting started
 
 ```bash
 npm install
 npm run dev      # http://localhost:3000
-npm run build && npm start
-npm run lint
-npx tsc --noEmit
+npm test         # 52 tests: engine math, store, sessions, signals, OAuth vector
+npm run check    # typecheck + lint + test + build
 ```
 
-Node 20+. Deploys to Vercel as-is.
-
-## Design system
-
-Components live in `src/components/ui.tsx` and compose everything: `Panel`,
-`MetricCard`, `MetricGrid`, `SectionHeader`, `SignalBadge`, `Pill`, `Delta`,
-`EmptyState`, `SourceUnavailable`, `TableSkeleton`, `LockedPanel`. Feature
-components — `MarketTable`, `AgentFeed`, `TrendingList`, `AgentStatus` — build on
-those rather than carrying their own styling.
-
-Tables are real tables on desktop and stacked cards under `md`, so mobile never
-scrolls sideways. Numbers use tabular figures so they do not jitter on refresh.
-Animation is limited to one status pulse, a 0.22s row entrance, and hover states.
-
-No webfonts: this build uses system stacks, which render instantly with no
-layout shift.
-
-## Brand assets
-
-The mascot and banner activate automatically when committed:
-
-| File | Used as |
-| --- | --- |
-| `public/brand/agent.png` | Header/footer mark and the hero mascot (square, transparent background works best) |
-| `public/brand/banner.png` | The social share card (1200x630 or wider) |
-
-Detection happens at build time (`next.config.ts`), so committing the files and
-redeploying is the whole procedure — no code change, no env var. Until they
-exist, an original geometric glyph (hooded silhouette + capsule) stands in, and
-the social card falls back to a drawn brand layout. Neither card variant
-carries metrics, so a cached share can never show stale numbers.
+Node 20.9+. Deploys to Vercel as-is (daily cron is Hobby-plan safe).

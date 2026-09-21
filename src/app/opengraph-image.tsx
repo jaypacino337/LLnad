@@ -5,7 +5,7 @@ import { ImageResponse } from "next/og";
 
 import { BRAND } from "@/lib/brand";
 
-export const alt = "PumpXBT — AI intelligence for Pump.fun";
+export const alt = "Hood ST — paper trading league for Pump.fun";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -61,14 +61,14 @@ export default function Image() {
       >
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", fontSize: 84, fontWeight: 700, letterSpacing: -3 }}>
-            <span style={{ color: "#0a0c0a" }}>Pump</span>
-            <span style={{ color: "#0a9d51" }}>XBT</span>
+            <span style={{ color: "#0a0c0a" }}>Hood</span>
+            <span style={{ color: "#0a9d51" }}>&nbsp;ST</span>
           </div>
           <div style={{ marginTop: 14, fontSize: 34, color: "#33383a" }}>
-            AI intelligence for Pump.fun.
+            Paper trading league for Pump.fun.
           </div>
           <div style={{ marginTop: 26, fontSize: 21, color: "#71787c", maxWidth: 620 }}>
-            Launches, wallet flow, momentum, verified calls and on-chain activity in one live feed.
+            $10K paper balance, up to 20x leverage, live prices. Daily, weekly and monthly leagues.
           </div>
         </div>
 

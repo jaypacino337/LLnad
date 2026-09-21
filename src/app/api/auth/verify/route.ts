@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 
+import { accountView, pricesForGame } from "@/lib/game-api";
+import { getOrCreateAccount, recordHolding } from "@/lib/game-store";
 import {
-  PRO_COOKIE,
-  PRO_MESSAGE_WINDOW_MS,
-  PRO_SESSION_HOURS,
-  createProSession,
-  proMessage,
-  proMissingEnv,
-} from "@/lib/pro";
+  MESSAGE_WINDOW_MS,
+  SESSION_COOKIE,
+  SESSION_HOURS,
+  createSession,
+  rewardGate,
+  signInMessage,
+} from "@/lib/player";
 import { getTokenBalance, solanaRpcUrl, verifySolanaSignature } from "@/lib/solana";
 
 export const dynamic = "force-dynamic";
@@ -15,21 +17,13 @@ export const dynamic = "force-dynamic";
 const NO_STORE = { "cache-control": "no-store" } as const;
 
 /**
- * Holder verification:
- * 1. client signs proMessage(wallet, ts) with the wallet;
+ * Wallet sign-in:
+ * 1. client signs signInMessage(wallet, ts) with the wallet;
  * 2. server checks the ed25519 signature and that ts is recent;
- * 3. server reads the wallet's PUMPXBT balance over RPC;
- * 4. a positive balance earns an HttpOnly session cookie.
+ * 3. a session cookie is issued and the paper account created on first visit;
+ * 4. best-effort reward-token balance check for eligibility badges.
  */
 export async function POST(request: Request) {
-  const missingEnv = proMissingEnv();
-  if (missingEnv.length > 0) {
-    return NextResponse.json(
-      { error: "not_configured", detail: `set ${missingEnv.join(" and ")}` },
-      { status: 503, headers: NO_STORE },
-    );
-  }
-
   let body: { wallet?: string; timestampMs?: number; signatureBase64?: string };
   try {
     body = (await request.json()) as typeof body;
@@ -45,14 +39,14 @@ export async function POST(request: Request) {
     );
   }
 
-  if (Math.abs(Date.now() - timestampMs) > PRO_MESSAGE_WINDOW_MS) {
+  if (Math.abs(Date.now() - timestampMs) > MESSAGE_WINDOW_MS) {
     return NextResponse.json(
       { error: "stale_message", detail: "signature timestamp is outside the allowed window" },
       { status: 400, headers: NO_STORE },
     );
   }
 
-  const message = new TextEncoder().encode(proMessage(wallet, timestampMs));
+  const message = new TextEncoder().encode(signInMessage(wallet, timestampMs));
   let signature: Uint8Array;
   try {
     signature = Uint8Array.from(Buffer.from(signatureBase64, "base64"));
@@ -67,29 +61,28 @@ export async function POST(request: Request) {
     );
   }
 
-  let balance: number;
-  try {
-    balance = await getTokenBalance(solanaRpcUrl(), wallet, process.env.PUMPXBT_TOKEN_MINT!);
-  } catch (error) {
-    return NextResponse.json(
-      { error: "rpc_unavailable", detail: error instanceof Error ? error.message : "rpc failed" },
-      { status: 503, headers: NO_STORE },
-    );
+  const prices = await pricesForGame();
+  const account = await getOrCreateAccount(wallet, prices);
+
+  // Eligibility is a badge, not a gate on playing — a failed RPC read only
+  // means the badge stays stale.
+  const gate = rewardGate();
+  if (gate.configured && gate.mint) {
+    try {
+      const held = await getTokenBalance(solanaRpcUrl(), wallet, gate.mint);
+      await recordHolding(wallet, held);
+      account.held = { amount: held, checkedAt: new Date().toISOString() };
+    } catch {
+      // keep the previous value
+    }
   }
 
-  if (balance <= 0) {
-    return NextResponse.json(
-      { error: "not_a_holder", detail: "this wallet holds no PUMPXBT" },
-      { status: 403, headers: NO_STORE },
-    );
-  }
-
-  const response = NextResponse.json({ unlocked: true, wallet, balance }, { headers: NO_STORE });
-  response.cookies.set(PRO_COOKIE, createProSession(wallet), {
+  const response = NextResponse.json({ signedIn: true, account: accountView(account, prices) }, { headers: NO_STORE });
+  response.cookies.set(SESSION_COOKIE, createSession(wallet), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    maxAge: PRO_SESSION_HOURS * 3600,
+    maxAge: SESSION_HOURS * 3600,
     path: "/",
   });
   return response;

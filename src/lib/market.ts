@@ -135,6 +135,7 @@ function dedupeByToken(tokens: MarketToken[]): MarketToken[] {
   return [...best.values()];
 }
 
+
 let cache: { snapshot: MarketSnapshot; at: number } | null = null;
 
 async function fetchSnapshot(): Promise<MarketSnapshot> {
@@ -207,4 +208,53 @@ export function volumeAcceleration(token: MarketToken): number {
   const sixHourAverage = (token.volume6h ?? 0) / 6;
   if (sixHourAverage <= 0) return 0;
   return hour / sixHourAverage;
+}
+
+/* --- spot prices for arbitrary tokens --------------------------------------
+   Open positions must stay priceable even after a token rotates out of the
+   discovery list, so prices can be fetched for any address directly. Same
+   source, same no-fabrication rule: unreachable means unpriced, never a
+   made-up number. */
+
+let priceCache: { at: number; prices: Map<string, number> } = {
+  at: 0,
+  prices: new Map(),
+};
+
+/**
+ * Live USD prices for up to 30 token addresses, keyed by address. Tokens the
+ * source cannot price are simply absent from the map.
+ */
+export async function getTokenPrices(addresses: string[]): Promise<Map<string, number>> {
+  const wanted = [...new Set(addresses)].slice(0, ADDRESS_BATCH);
+  if (wanted.length === 0) return new Map();
+
+  const fresh = Date.now() - priceCache.at < CACHE_TTL_MS;
+  if (fresh && wanted.every((address) => priceCache.prices.has(address))) {
+    return priceCache.prices;
+  }
+
+  try {
+    const pairs = await getJson<DexPair[] | { pairs?: DexPair[] }>(
+      `/latest/dex/tokens/${wanted.join(",")}`,
+    );
+    const list = Array.isArray(pairs) ? pairs : (pairs.pairs ?? []);
+
+    const best = new Map<string, { price: number; liquidity: number }>();
+    for (const pair of list) {
+      const address = pair.baseToken?.address;
+      const price = num(pair.priceUsd);
+      if (!address || price === null) continue;
+      const liquidity = num(pair.liquidity?.usd) ?? 0;
+      const held = best.get(address);
+      if (!held || liquidity > held.liquidity) best.set(address, { price, liquidity });
+    }
+
+    const prices = new Map([...best.entries()].map(([address, entry]) => [address, entry.price]));
+    priceCache = { at: Date.now(), prices };
+    return prices;
+  } catch {
+    // Stale-but-real beats fabricated: fall back to the last good fetch.
+    return priceCache.prices;
+  }
 }

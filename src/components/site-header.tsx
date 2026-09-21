@@ -5,16 +5,17 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { BrandMark, Wordmark } from "./brand-mark";
+import { WalletButton } from "./wallet-button";
 
 const NAV = [
-  { href: "/", label: "Market" },
-  { href: "/signals", label: "Signals" },
-  { href: "/wallets", label: "Wallets" },
-  { href: "/calls", label: "Calls" },
-  { href: "/agent", label: "Agent" },
+  { href: "/", label: "Markets" },
+  { href: "/trade", label: "Trade" },
+  { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/portfolio", label: "Portfolio" },
+  { href: "/rules", label: "Rules" },
 ];
 
-export function SiteHeader({ online }: { online: boolean }) {
+export function SiteHeader({ online, wallet }: { online: boolean; wallet: string | null }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -53,16 +54,11 @@ export function SiteHeader({ online }: { online: boolean }) {
               aria-hidden
             />
             <span className="font-mono text-[11px] text-muted">
-              {online ? "online" : "degraded"}
+              {online ? "prices live" : "prices down"}
             </span>
           </span>
 
-          <Link
-            href="/agent#pro"
-            className="rounded-md bg-ink px-3 py-1.5 text-[12.5px] font-semibold text-bg transition hover:opacity-90"
-          >
-            Unlock Pro
-          </Link>
+          <WalletButton wallet={wallet} />
 
           <button
             type="button"

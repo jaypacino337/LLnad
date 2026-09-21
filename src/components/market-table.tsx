@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { age, compact, usd } from "@/lib/format";
 import type { MarketToken } from "@/lib/market";
 import { volumeAcceleration } from "@/lib/market";
@@ -47,7 +49,7 @@ export function MarketTable({ tokens }: { tokens: MarketToken[] }) {
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="border-b border-line bg-surface">
-              {["Token", "Price", "1h", "24h", "Market cap", "Liquidity", "Vol 24h", "Age", "Momentum"].map(
+              {["Token", "Price", "1h", "24h", "Market cap", "Liquidity", "Vol 24h", "Age", "Momentum", ""].map(
                 (label, index) => (
                   <th
                     key={label}
@@ -94,6 +96,14 @@ export function MarketTable({ tokens }: { tokens: MarketToken[] }) {
                   {age(token.createdAtMs)}
                 </td>
                 <td className="px-3 py-2.5 text-right">{momentumBadge(token)}</td>
+                <td className="px-2 py-2.5 text-right">
+                  <Link
+                    href={`/trade?token=${token.tokenAddress}&symbol=${encodeURIComponent(token.symbol)}`}
+                    className="rounded-md bg-mint-wash px-2.5 py-1 text-[11.5px] font-semibold text-mint-text transition hover:bg-mint hover:text-mint-ink"
+                  >
+                    Trade
+                  </Link>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -103,11 +113,17 @@ export function MarketTable({ tokens }: { tokens: MarketToken[] }) {
       {/* Mobile: stacked rows, no horizontal scrolling */}
       <ul className="divide-y divide-line md:hidden">
         {tokens.map((token) => (
-          <li key={token.pairAddress} className="row-in px-3 py-3">
+          <li key={token.pairAddress} className="row-in relative px-3 py-3">
+            <Link
+              href={`/trade?token=${token.tokenAddress}&symbol=${encodeURIComponent(token.symbol)}`}
+              className="absolute top-3 right-3 z-10 rounded-md bg-mint-wash px-2.5 py-1 text-[11.5px] font-semibold text-mint-text"
+            >
+              Trade
+            </Link>
             <a href={token.url} target="_blank" rel="noopener noreferrer" className="block">
               <div className="flex items-start justify-between gap-3">
                 <TokenIdentity token={token} />
-                <div className="shrink-0 text-right">
+                <div className="shrink-0 pr-16 text-right">
                   <p className="font-mono text-[13px] text-ink tnum">{usd(token.priceUsd)}</p>
                   <Delta value={token.change24h} className="text-[11.5px]" />
                 </div>
