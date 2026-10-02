@@ -210,6 +210,63 @@ export function volumeAcceleration(token: MarketToken): number {
   return hour / sixHourAverage;
 }
 
+let tokensCache: { at: number; key: string; tokens: Map<string, MarketToken> } | null = null;
+
+/**
+ * Full live data for up to 30 token addresses, keyed by address, each from its
+ * deepest-liquidity Solana pair. Unpriceable tokens are absent. On upstream
+ * failure the last good fetch is returned (stale-but-real, never fabricated).
+ */
+export async function tokensByAddress(addresses: string[]): Promise<Map<string, MarketToken>> {
+  const wanted = [...new Set(addresses)].slice(0, ADDRESS_BATCH);
+  if (wanted.length === 0) return new Map();
+  const key = wanted.join(",");
+
+  if (tokensCache && tokensCache.key === key && Date.now() - tokensCache.at < CACHE_TTL_MS) {
+    return tokensCache.tokens;
+  }
+
+  try {
+    const pairs = await getJson<DexPair[] | { pairs?: DexPair[] }>(`/latest/dex/tokens/${key}`);
+    const list = Array.isArray(pairs) ? pairs : (pairs.pairs ?? []);
+    const tokens = new Map(
+      dedupeByToken(
+        list
+          .filter((pair) => pair.chainId === "solana")
+          .map(toToken)
+          .filter((token): token is MarketToken => token !== null),
+      ).map((token) => [token.tokenAddress, token]),
+    );
+    tokensCache = { at: Date.now(), key, tokens };
+    return tokens;
+  } catch {
+    return tokensCache?.tokens ?? new Map();
+  }
+}
+
+/**
+ * Full live data for one token address, via its deepest-liquidity pair.
+ * Returns null when the source has no live pair for it (or cannot be
+ * reached) — callers treat that as "not summonable", never as free data.
+ */
+export async function lookupToken(address: string): Promise<MarketToken | null> {
+  try {
+    const pairs = await getJson<DexPair[] | { pairs?: DexPair[] }>(
+      `/latest/dex/tokens/${address}`,
+    );
+    const list = Array.isArray(pairs) ? pairs : (pairs.pairs ?? []);
+    const [token] = dedupeByToken(
+      list
+        .filter((pair) => pair.chainId === "solana")
+        .map(toToken)
+        .filter((entry): entry is MarketToken => entry !== null && entry.tokenAddress === address),
+    );
+    return token ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /* --- spot prices for arbitrary tokens --------------------------------------
    Open positions must stay priceable even after a token rotates out of the
    discovery list, so prices can be fetched for any address directly. Same

@@ -4,85 +4,81 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-import { BrandMark, Wordmark } from "./brand-mark";
-import { WalletButton } from "./wallet-button";
-
 const NAV = [
-  { href: "/", label: "Markets" },
-  { href: "/trade", label: "Trade" },
-  { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/portfolio", label: "Portfolio" },
-  { href: "/rules", label: "Rules" },
-];
+  { href: "/", label: "City" },
+  { href: "/clones", label: "Clones" },
+  { href: "/summon", label: "Summon" },
+  { href: "/how-it-works", label: "How it works" },
+] as const;
 
-export function SiteHeader({ online, wallet }: { online: boolean; wallet: string | null }) {
+export function Wordmark({ className = "" }: { className?: string }) {
+  return (
+    <span className={`font-mono font-bold tracking-[0.08em] text-ink ${className}`}>
+      CLONE
+      <span className="blink text-link-text">▮</span>
+    </span>
+  );
+}
+
+export function SiteHeader({ online }: { online: boolean }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
-
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur-md">
-      <div className="mx-auto flex h-14 w-full max-w-[1220px] items-center gap-3 px-3 sm:px-5">
-        <Link href="/" className="flex items-center gap-2" onClick={() => setOpen(false)}>
-          <BrandMark className="size-7" />
-          <Wordmark />
+    <header className="sticky top-0 z-40 border-b border-line-strong bg-bg/95 backdrop-blur-sm">
+      <div className="mx-auto flex w-full max-w-[1180px] items-center gap-5 px-3 py-2.5 sm:px-5">
+        <Link href="/" className="flex items-center gap-2" aria-label="CLONE — home">
+          <Wordmark className="text-[15px]" />
         </Link>
 
-        <nav className="ml-3 hidden items-center gap-0.5 md:flex" aria-label="Main">
+        <span
+          className="inline-flex items-center gap-1.5 border border-line-strong bg-surface px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted"
+          title={online ? "Live market data is flowing" : "The live source is unreachable"}
+        >
+          <span className={`size-1.5 rounded-full ${online ? "bg-up live-dot" : "bg-down"}`} />
+          {online ? "live" : "offline"}
+        </span>
+
+        <nav className="ml-auto hidden items-center gap-5 sm:flex" aria-label="Main">
           {NAV.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              aria-current={isActive(item.href) ? "page" : undefined}
-              className={`rounded-md px-2.5 py-1.5 text-[13px] transition ${
-                isActive(item.href)
-                  ? "bg-raised font-medium text-ink"
-                  : "text-muted hover:bg-raised hover:text-ink"
+              className={`text-[13px] transition hover:text-link-text ${
+                pathname === item.href ? "font-semibold text-ink underline underline-offset-4" : "text-ink-soft"
               }`}
             >
               {item.label}
             </Link>
           ))}
+          <Link
+            href="/summon"
+            className="border border-ink bg-ink px-3 py-1.5 text-[12.5px] font-semibold text-bg transition hover:opacity-85"
+          >
+            Summon a clone
+          </Link>
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
-          <span className="hidden items-center gap-1.5 sm:inline-flex">
-            <span
-              className={`size-1.5 rounded-full ${online ? "bg-mint live-dot" : "bg-down"}`}
-              aria-hidden
-            />
-            <span className="font-mono text-[11px] text-muted">
-              {online ? "prices live" : "prices down"}
-            </span>
-          </span>
-
-          <WalletButton wallet={wallet} />
-
-          <button
-            type="button"
-            onClick={() => setOpen((value) => !value)}
-            aria-expanded={open}
-            aria-label="Menu"
-            className="grid size-8 place-items-center rounded-md border border-line text-muted md:hidden"
-          >
-            <span aria-hidden className="text-[15px] leading-none">
-              {open ? "✕" : "≡"}
-            </span>
-          </button>
-        </div>
+        <button
+          type="button"
+          className="ml-auto border border-line-strong bg-surface px-2.5 py-1 font-mono text-[13px] sm:hidden"
+          aria-expanded={open}
+          aria-label="Toggle menu"
+          onClick={() => setOpen((value) => !value)}
+        >
+          ≡
+        </button>
       </div>
 
       {open ? (
-        <nav className="border-t border-line bg-bg px-3 py-1.5 md:hidden" aria-label="Main">
+        <nav className="border-t border-line bg-surface sm:hidden" aria-label="Main mobile">
           {NAV.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               onClick={() => setOpen(false)}
-              className={`block rounded-md px-2.5 py-2.5 text-[13px] ${
-                isActive(item.href) ? "bg-raised font-medium text-ink" : "text-muted"
+              className={`block px-4 py-2.5 text-[14px] ${
+                pathname === item.href ? "font-semibold text-ink" : "text-ink-soft"
               }`}
             >
               {item.label}

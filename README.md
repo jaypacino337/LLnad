@@ -1,111 +1,44 @@
-# Hood ST
+# CLONE
 
-**Paper trading league for Pump.fun.**
+**Every coin gets a clone.** Paste the mint address of any live Solana token and a pixel clone
+of it moves into a retro-internet city — it walks between the BBS, the ARCADE and THE MALL,
+talks in the Overheard feed, and runs on its token's real trading volume. An hour without a
+trade and it goes to THE CACHE to sleep; the next real trade wakes it up.
 
-Every wallet gets a $10,000 paper balance. Long or short live Pump.fun markets
-with up to 20x leverage — real prices, zero risk — and compete in daily, weekly
-and monthly leagues ranked by return.
+## What is real and what is theater
 
-White page, black text, one mint green. Mono for numbers. No real funds, ever.
+- **Real:** every price, volume, liquidity, market-cap and trade-count figure is a live reading
+  from Dexscreener's public API, or rendered as `—` when the source has nothing. Awake/asleep is
+  defined as "the token traded in the last hour". The energy bar is 24h volume on a log scale.
+- **Theater:** the bodies, personalities and speech. Looks and personality derive
+  deterministically from the mint address. Speech comes from a rule bank (or from Claude when
+  `ANTHROPIC_API_KEY` is set) and is labeled as generated — any figure inside a line is checked
+  against the live readings before it prints.
+- **Never:** fabricated numbers, placeholder data dressed as live data, or any input besides a
+  public mint address. No wallet, no signatures, no keys.
 
-## Routes
+## Stack
 
-| Route | What it does |
-| --- | --- |
-| `/` | Markets, your account, today's league, live signals |
-| `/trade` | Order ticket: side, margin, leverage, live entry and liquidation preview |
-| `/leaderboard` | Daily / weekly / monthly leagues with reward-eligibility badges |
-| `/portfolio` | Equity, open positions with close buttons, trade history |
-| `/rules` | The five rules and the exact arithmetic |
-| `/signals` | Deterministic rule matches over live market data |
+Next.js (App Router) · React · Tailwind v4 · zero runtime dependencies beyond that.
 
-## The game
+- `src/lib/world.ts` — the deterministic world: map, personas, sprites, walk schedules. Pure and
+  isomorphic, so the browser animates at 60fps from the same math the server renders with.
+- `src/lib/mind.ts` — the rule-bank speech engine; `src/lib/claude-mind.ts` — optional Claude
+  minds with a numeric-grounding check.
+- `src/lib/market.ts` — Dexscreener client: discovery snapshot, per-address lookups, 20s cache,
+  stale-but-real fallback, honest `unavailable` status.
+- `src/lib/clone-store.ts` — JSON persistence for summons and the city feed (atomic writes,
+  cross-instance stamp invalidation).
 
-- **$10,000** paper balance per wallet, created at first sign-in
-- **Isolated margin**: minimum $10, up to 10 open positions
-- **Leverage 1–20x**; a position liquidates when its loss reaches its margin
-  (settled exactly at the liquidation price — the margin is lost, never more)
-- **No fees, no funding** — stated, not hidden
-- **Leagues** on UTC boundaries, ranked by *return over the period* (equity now
-  vs equity when the period started), so late joiners start flat
-- **Money settles in cents** at every realisation boundary
+## Run it
 
-The full arithmetic is on `/rules` and implemented in `src/lib/game.ts` as pure
-functions with tests over every branch, including exact liquidation-boundary
-behaviour and ISO-week year rollovers.
-
-## Data integrity
-
-**No price is ever invented.** Fills, marks and liquidations all use live
-prices from Dexscreener (no API key needed). When the source is unreachable:
-trading pauses with an honest message, unpriced positions display escrowed
-margin instead of a guessed PnL and cannot be closed, and the UI says exactly
-what is down. Open positions stay priceable even after a token rotates out of
-the discovery list via direct per-address lookups.
-
-Signals are the same six deterministic rules as before — thresholds over
-returned fields, each entry quoting its numbers, tagged
-`kind: "deterministic-rules"` in the API.
-
-## Identity and rewards
-
-You are your wallet. Signing in = signing a short timestamped message with
-Phantom; the server verifies the ed25519 signature (no web3.js — base58 and
-verification live in `src/lib/solana.ts` on node:crypto) and issues an
-HMAC-signed HttpOnly session cookie.
-
-**Nothing here takes a private key.** Anything that asks for one is a scam.
-
-League placement is open to everyone. Reward *payouts* are gated: set
-`HOODST_TOKEN_MINT` (public mint address) and `HOODST_MIN_HOLD`, and each
-sign-in checks the wallet's balance on-chain (public RPC by default), showing an
-eligibility badge on the boards. Unconfigured gating fails closed — no badge for
-anyone rather than a fake one.
-
-## Configuration
-
-Markets, trading and leagues need **no credentials at all.**
-
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `HOODST_TOKEN_MINT` | for reward badges | Public mint of the reward token |
-| `HOODST_MIN_HOLD` | optional (default 1) | Minimum holding for eligibility |
-| `NEXT_PUBLIC_HOLD_SYMBOL` | optional | Ticker shown in copy (default `$HOODST`) |
-| `SOLANA_RPC_URL` | optional | Dedicated RPC; defaults to the free public endpoint |
-| `HOODST_SESSION_SECRET` | recommended | Sessions survive restarts |
-| `HOODST_DATA_DIR` | production | Where `game.json` lives — see persistence below |
-| `NEXT_PUBLIC_SITE_URL` | recommended | Absolute URLs in social cards |
-| `X_API_KEY` `X_API_SECRET` `X_ACCESS_TOKEN` `X_ACCESS_TOKEN_SECRET` | for autoposting | Posts the strongest signal (daily cron) |
-| `CRON_SECRET` | recommended | Locks `/api/autopost` |
-
-**Persistence:** accounts live in one JSON document with atomic writes and
-cross-instance reload. On serverless hosts the filesystem is ephemeral — fine
-for trying it out, but real league standings need `HOODST_DATA_DIR` on mounted
-storage or `src/lib/game-store.ts` reimplemented on a database. That module is
-the only thing to swap.
-
-## API
-
-| Method | Path | Notes |
-| --- | --- | --- |
-| `GET` | `/api/market` | Tradeable markets. 503 when upstream is down |
-| `GET` | `/api/signals` | Rule matches |
-| `POST` | `/api/auth/verify` | Wallet-signature sign-in; sets the session cookie |
-| `POST` | `/api/auth/logout` | Clears the session |
-| `GET` | `/api/account` | Your account, marked to live prices (401 signed out) |
-| `POST` | `/api/trade/open` | `{tokenAddress, symbol, side, marginUsd, leverage}` |
-| `POST` | `/api/trade/close` | `{positionId}` — 503 rather than a made-up fill when unpriced |
-| `GET` | `/api/leaderboard?period=daily\|weekly\|monthly` | Ranked rows with eligibility |
-| `GET` | `/api/status` | Health: prices, players, gate, autopost |
-| `GET`/`POST` | `/api/autopost` | Cron entry point for X |
-
-## Getting started
-
-```bash
-npm install
-npm run dev      # http://localhost:3000
-npm test         # 52 tests: engine math, store, sessions, signals, OAuth vector
-npm run check    # typecheck + lint + test + build
+```sh
+npm ci
+npm run dev    # http://localhost:3000
+npm run check  # typecheck + lint + unit tests + build
 ```
 
-Node 20.9+. Deploys to Vercel as-is (daily cron is Hobby-plan safe).
+Deployment needs nothing beyond the repo: push to the branch your host watches. See
+`.env.example` for the three optional variables (site URL, Claude minds, data dir). On
+serverless hosts the JSON state is ephemeral — wild clones always repopulate the city, but
+summons reset on cold starts unless `CLONE_DATA_DIR` points at a persistent disk.

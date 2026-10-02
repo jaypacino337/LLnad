@@ -1,32 +1,35 @@
 @import "tailwindcss";
 
 /*
- * Light-first, crypto-native. White page, black text, one mint green that
- * carries all the emphasis. No dark page background, no terminal styling.
+ * CLONE wears the old internet: warm paper, near-black ink, and classic
+ * hyperlink cobalt doing all the emphasis. Hairlines are solid, frames are
+ * sometimes dashed, chrome looks like windows from a desktop that no longer
+ * ships. Everything loud is type, not gradients.
  */
 
 :root {
-  --bg: #ffffff;
-  --surface: #fbfcfb;
-  --raised: #f4f6f4;
-  --ink: #0a0c0a;
-  --ink-soft: #33383a;
-  --muted: #71787c;
-  --line: #e9ebe9;
-  --line-strong: #d6dad7;
+  --bg: #f4f0e4;
+  --surface: #faf7ed;
+  --raised: #ece7d6;
+  --ink: #171410;
+  --ink-soft: #3d3a33;
+  --muted: #7d7768;
+  --line: #d9d2bd;
+  --line-strong: #bdb49a;
 
-  /* Mint: solid fills use --mint; text on white uses --mint-text for contrast. */
-  --mint: #2fe07f;
-  --mint-strong: #16c96a;
-  --mint-text: #0a9d51;
-  --mint-ink: #04160c;
-  --mint-wash: #eefaf2;
+  /* Hyperlink cobalt: fills use --link, text on paper uses --link-text. */
+  --link: #1f3df0;
+  --link-strong: #1630c4;
+  --link-text: #1c36d6;
+  --link-wash: #e7eafc;
 
-  --down: #e5484d;
-  --down-wash: #fdefef;
-  --pink: #ff5fa2;
+  --down: #cf3f2e;
+  --down-wash: #f8e9e4;
+  --up: #0d8a45;
+  --up-wash: #e4f3e8;
+  --pink: #d63ba0;
 
-  --shadow-card: 0 1px 2px rgba(10, 12, 10, 0.04), 0 8px 24px -16px rgba(10, 12, 10, 0.12);
+  --shadow-card: 0 1px 0 rgba(23, 20, 16, 0.06), 0 10px 26px -20px rgba(23, 20, 16, 0.3);
 }
 
 @theme inline {
@@ -38,17 +41,17 @@
   --color-muted: var(--muted);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
-  --color-mint: var(--mint);
-  --color-mint-strong: var(--mint-strong);
-  --color-mint-text: var(--mint-text);
-  --color-mint-ink: var(--mint-ink);
-  --color-mint-wash: var(--mint-wash);
+  --color-link: var(--link);
+  --color-link-strong: var(--link-strong);
+  --color-link-text: var(--link-text);
+  --color-link-wash: var(--link-wash);
   --color-down: var(--down);
   --color-down-wash: var(--down-wash);
+  --color-up: var(--up);
+  --color-up-wash: var(--up-wash);
   --color-pink: var(--pink);
 
-  /* No webfonts: this environment has no egress to font CDNs, and system
-     stacks render instantly with no layout shift. */
+  /* System stacks: instant, zero layout shift, no font CDN dependency. */
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
   --font-mono:
@@ -73,10 +76,10 @@ body {
   font-feature-settings: "tnum";
 }
 
-:where(a, button, input, select, [tabindex]):focus-visible {
-  outline: 2px solid var(--mint-strong);
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--link);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -88,24 +91,30 @@ body {
   }
 }
 
-/* Agent online dot: one slow pulse, nothing more. */
+/* The terminal cursor in the wordmark, and the live dot. */
+@keyframes blink-steps {
+  50% {
+    opacity: 0;
+  }
+}
+.blink {
+  animation: blink-steps 1.2s steps(1) infinite;
+}
+
 @keyframes live-pulse {
   0%,
   100% {
     opacity: 1;
-    transform: scale(1);
   }
   50% {
-    opacity: 0.45;
-    transform: scale(0.82);
+    opacity: 0.4;
   }
 }
-
 .live-dot {
   animation: live-pulse 2.4s ease-in-out infinite;
 }
 
-/* Fresh data lands with a single quiet tick, not a flash. */
+/* Fresh rows land with one quiet tick, not a flash. */
 @keyframes row-in {
   from {
     opacity: 0;
@@ -116,7 +125,6 @@ body {
     transform: none;
   }
 }
-
 .row-in {
   animation: row-in 0.22s ease-out;
 }
@@ -126,28 +134,65 @@ body {
     transform: translateX(100%);
   }
 }
-
 .skeleton {
   position: relative;
   overflow: hidden;
   background: var(--raised);
 }
-
 .skeleton::after {
   content: "";
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
   animation: shimmer 1.4s infinite;
 }
 
-/* Very faint grid, used only behind the hero. */
+/* Sprites are tiny pixel grids scaled up: keep them crisp. */
+.pixelated {
+  image-rendering: pixelated;
+  shape-rendering: crispEdges;
+}
+
+/* Graph paper behind the hero and the city. */
 .grid-wash {
   background-image:
-    linear-gradient(to right, rgba(10, 12, 10, 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(10, 12, 10, 0.035) 1px, transparent 1px);
-  background-size: 28px 28px;
+    linear-gradient(to right, rgba(23, 20, 16, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(23, 20, 16, 0.045) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+/* Old-OS window chrome: a titled panel with a hairline and stripes. */
+.win {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-card);
+}
+.win-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--line-strong);
+  background: var(--raised);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.win-title::after {
+  content: "";
+  flex: 1;
+  height: 7px;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--line-strong),
+    var(--line-strong) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  opacity: 0.6;
 }
 
 .thin-scroll {

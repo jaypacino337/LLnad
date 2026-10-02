@@ -1,37 +1,32 @@
 import { NextResponse } from "next/server";
 
-import { isAutopostConfigured, missingAutopostEnv } from "@/lib/autopost";
-import { accountCount } from "@/lib/game-store";
+import { summonedClones } from "@/lib/clone-store";
+import { mindMode } from "@/lib/claude-mind";
 import { getMarketSnapshot } from "@/lib/market";
-import { rewardGate } from "@/lib/player";
-import { deriveSignals } from "@/lib/signals";
 
 export const dynamic = "force-dynamic";
 
-/** Health and configuration in one place — useful for uptime checks. */
+/** Health readout: what is live, what is configured, nothing invented. */
 export async function GET() {
   const snapshot = await getMarketSnapshot();
-  const signals = deriveSignals(snapshot.tokens, 40);
-  const gate = rewardGate();
-
-  return NextResponse.json(
-    {
-      game: snapshot.status === "live" ? "trading" : "paused",
-      lastIndexedAt: snapshot.fetchedAt,
-      marketsIndexed: snapshot.tokens.length,
-      signals: signals.length,
-      players: await accountCount(),
-      sources: {
-        prices: { provider: snapshot.source, live: snapshot.status === "live", error: snapshot.error },
-        rewardGate: {
-          configured: gate.configured,
-          minHold: gate.configured ? gate.minHold : null,
-          symbol: gate.symbol,
-          missingEnv: gate.configured ? [] : ["HOODST_TOKEN_MINT"],
-        },
-        autopost: { configured: isAutopostConfigured(), missingEnv: missingAutopostEnv() },
+  return NextResponse.json({
+    app: "CLONE",
+    sources: {
+      market: {
+        source: snapshot.source,
+        status: snapshot.status,
+        ...(snapshot.error ? { error: snapshot.error } : {}),
       },
+      mind:
+        mindMode() === "claude"
+          ? { mode: "claude", note: "lines written by Claude, grounded in live fields" }
+          : {
+              mode: "rules",
+              note: "deterministic line bank; set ANTHROPIC_API_KEY for Claude minds",
+              missingEnv: ["ANTHROPIC_API_KEY"],
+            },
     },
-    { headers: { "cache-control": "no-store" } },
-  );
+    summoned: summonedClones().length,
+    at: new Date().toISOString(),
+  });
 }

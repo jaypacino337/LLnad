@@ -1,55 +1,29 @@
-# Launch runbook
+# Launching CLONE
 
-Everything in the repo is finished: game engine, tests, branding, deploy
-config. What remains is dashboard clicks.
+The site works with zero configuration: deploy the repo and the city populates itself with wild
+clones of the most-traded live Solana markets.
 
-## ⚠️ Never enter a private key
+## Deploy
 
-Nothing in Hood ST uses one. Players sign a message with their own wallet;
-reward gating reads PUBLIC addresses. Anything asking for a private key is a
-scam.
+1. Point your host (e.g. Vercel) at this repository's default branch. Every push deploys.
+2. That's it. No env vars are required.
 
-## 1. Deploy (2 minutes, required)
+## Optional configuration (host env vars)
 
-1. **vercel.com/new** → Import **`jaypacino337/LLnad`** → Deploy (change nothing).
-
-Working = the Hood ST page with a populated markets table, and
-`your-url/api/status` returns `"game": "trading"`. Trading, leagues and
-signals are live with zero configuration.
-
-If a deployment turns red: open it → Build Logs → paste the error into the
-Claude session.
-
-## 2. Reward gating (public addresses only)
-
-Vercel → Settings → Environment Variables, then Redeploy:
-
-| Variable | Value |
+| Variable | Effect when set |
 | --- | --- |
-| `HOODST_TOKEN_MINT` | the reward token's **public mint address** |
-| `HOODST_MIN_HOLD` | holding required for reward eligibility (e.g. `10000`) |
-| `NEXT_PUBLIC_HOLD_SYMBOL` | the ticker to show, e.g. `$HOOD` |
+| `NEXT_PUBLIC_SITE_URL` | Canonical URL for social cards and metadata. |
+| `ANTHROPIC_API_KEY` | Clone speech is written by Claude (Haiku) instead of the rule bank. Lines stay grounded: any figure Claude writes is checked against the live readings, and ungrounded lines are discarded. Costs a few short calls per awake clone per hour. |
+| `CLONE_DATA_DIR` | Directory for the city's JSON state. Unset, it is `./.data`, which is ephemeral on serverless — summoned clones reset on cold starts (wild clones always come back on their own). Point it at a mounted disk, or swap `src/lib/clone-store.ts` for a database, to make summons permanent. |
 
-## 3. Recommended
+## ⚠️ Keys
 
-| Variable | Value | Why |
-| --- | --- | --- |
-| `NEXT_PUBLIC_SITE_URL` | your Vercel URL | correct share-card links |
-| `HOODST_SESSION_SECRET` | `openssl rand -hex 32` | sign-ins survive restarts |
+There is no private-key input anywhere in this product and none must ever be added. CLONE reads
+public market data and takes exactly one kind of user input: a public token mint address. The
+only secret it can use is your own `ANTHROPIC_API_KEY`, set as a host env var — never commit it.
 
-## 4. Standings that survive redeploys
+## Verifying a deploy
 
-The game state is a JSON file; on Vercel it resets when the instance recycles.
-Fine for a soft launch — before running leagues with real rewards, either set
-`HOODST_DATA_DIR` to mounted storage (non-serverless hosts) or ask Claude to
-swap `src/lib/game-store.ts` onto a database. One module, nothing else changes.
-
-## 5. Optional
-
-| Variable | Where | Turns on |
-| --- | --- | --- |
-| `X_API_*` ×4 | developer.x.com, Read & Write | autoposting the strongest signal (daily) |
-| `CRON_SECRET` | `openssl rand -hex 24` | locks the cron endpoint |
-
-Smoke-test autoposting any time at `your-url/api/autopost` — without
-credentials it returns the post it would have sent.
+- `/api/status` — source health, mind mode (claude/rules), summon count.
+- `/` — the header light says **live** when market data is flowing; the city shows clones.
+- `/summon` — paste any live token's mint; the clone should appear and link to its page.

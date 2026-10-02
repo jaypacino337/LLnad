@@ -1,171 +1,73 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 
-import { AgentFeed } from "@/components/agent-feed";
-import { AgentMascot } from "@/components/brand-mark";
-import { AccountPanel } from "@/components/account-panel";
-import { MarketTable } from "@/components/market-table";
-import {
-  EmptyState,
-  MetricCard,
-  MetricGrid,
-  Panel,
-  Pill,
-  SectionHeader,
-  SourceUnavailable,
-} from "@/components/ui";
-import { shortAddress } from "@/lib/format";
-import { pricesForGame } from "@/lib/game-api";
-import { accountCount, leaderboard } from "@/lib/game-store";
-import { getMarketSnapshot } from "@/lib/market";
-import { SESSION_COOKIE, isEligible, verifySession } from "@/lib/player";
-import { deriveSignals } from "@/lib/signals";
+import { CloneSprite } from "@/components/sprite";
+import { WorldLive } from "@/components/world-live";
+import { getWorldState } from "@/lib/clone-api";
 
 export const dynamic = "force-dynamic";
 
+/** Sample mints for the hero parade — just deterministic sprites, no data. */
+const PARADE = [
+  "Bonk111111111111111111111111111111111111pump",
+  "Jolt111111111111111111111111111111111111pump",
+  "Nova111111111111111111111111111111111111pump",
+  "Mint111111111111111111111111111111111111pump",
+];
+
 export default async function HomePage() {
-  const cookieStore = await cookies();
-  const signedIn = verifySession(cookieStore.get(SESSION_COOKIE)?.value) !== null;
-  const snapshot = await getMarketSnapshot();
-  const prices = await pricesForGame();
-  const [players, topToday] = await Promise.all([accountCount(), leaderboard("daily", prices, new Date(), 5)]);
-  const signals = deriveSignals(snapshot.tokens, 6);
-  const live = snapshot.status === "live";
+  const world = await getWorldState();
 
   return (
     <>
-      {/* Hero — compact: the game starts one scroll-inch below. */}
-      <section className="relative overflow-hidden border-b border-line">
-        <div aria-hidden className="pointer-events-none absolute inset-0 grid-wash opacity-70" />
-        <div className="relative mx-auto flex w-full max-w-[1220px] items-end justify-between gap-6 px-3 pt-8 pb-6 sm:px-5 sm:pt-10">
-          <div className="min-w-0">
-            <Pill tone="mint">
-              <span className={`size-1.5 rounded-full ${live ? "bg-mint live-dot" : "bg-down"}`} />
-              {live ? "Prices live" : "Prices unavailable"}
-            </Pill>
-
-            <h1 className="mt-3 text-[30px] leading-[1.05] font-semibold tracking-tight text-ink sm:text-[42px]">
-              Hood ST
+      {/* Hero — short; the city is the point and sits one scroll below. */}
+      <section className="relative overflow-hidden border-b border-line-strong">
+        <div aria-hidden className="pointer-events-none absolute inset-0 grid-wash opacity-80" />
+        <div className="relative mx-auto flex w-full max-w-[1180px] flex-wrap items-end justify-between gap-6 px-3 pt-9 pb-7 sm:px-5 sm:pt-12">
+          <div className="min-w-0 max-w-2xl">
+            <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-link-text">
+              every coin gets a clone
+            </p>
+            <h1 className="mt-2 text-[30px] leading-[1.08] font-semibold tracking-tight text-ink sm:text-[44px]">
+              Your coin, cloned.
+              <br />
+              It walks. It talks. It naps.
             </h1>
-            <p className="mt-1 text-[17px] font-medium tracking-tight text-mint-text sm:text-[20px]">
-              Paper trading league for Pump.fun.
+            <p className="mt-3 max-w-xl text-[13.5px] leading-relaxed text-ink-soft">
+              Paste any live Solana mint and a pixel clone of it moves into the city. Real trading
+              volume is its pulse — a busy hour keeps it awake and chatty, a dead hour sends it to
+              THE CACHE to sleep. No wallet, no keys, free.
             </p>
-            <p className="mt-2.5 max-w-xl text-[13.5px] leading-relaxed text-muted">
-              $10,000 paper balance. Long or short live markets with up to 20x leverage. Daily,
-              weekly and monthly leagues — real prices, zero risk.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-wrap gap-2">
               <Link
-                href="/trade"
-                className="rounded-md bg-ink px-4 py-2.5 text-[13.5px] font-semibold text-bg transition hover:opacity-90"
+                href="/summon"
+                className="border border-ink bg-ink px-4 py-2.5 text-[13.5px] font-semibold text-bg transition hover:opacity-85"
               >
-                Start trading
+                Summon a clone
               </Link>
               <Link
-                href="/leaderboard"
-                className="rounded-md border border-line bg-bg px-4 py-2.5 text-[13.5px] font-medium text-ink transition hover:border-line-strong"
+                href="/how-it-works"
+                className="border border-line-strong bg-surface px-4 py-2.5 text-[13.5px] font-medium text-ink transition hover:border-ink"
               >
-                Leaderboard
+                How it works
               </Link>
             </div>
           </div>
-
-          <AgentMascot className="hidden w-[140px] shrink-0 sm:block lg:w-[172px] -mb-6" />
+          <div className="flex items-end gap-3 pb-1" aria-hidden>
+            {PARADE.map((mint, index) => (
+              <CloneSprite key={mint} mint={mint} size={index === 1 ? 64 : 44} />
+            ))}
+          </div>
         </div>
       </section>
 
-      <div className="mx-auto w-full max-w-[1220px] px-3 py-5 sm:px-5">
-        {/* Stats strip */}
-        <MetricGrid>
-          <MetricCard label="Players" value={String(players)} hint="wallets with accounts" />
-          <MetricCard
-            label="Markets"
-            value={live ? String(snapshot.tokens.length) : "—"}
-            hint={live ? "tradeable now" : "source unreachable"}
-          />
-          <MetricCard label="Signals" value={live ? String(signals.length) : "—"} hint="rule matches" />
-          <MetricCard label="Start balance" value="$10K" hint="paper, per wallet" />
-          <MetricCard label="Max leverage" value="20x" hint="isolated margin" />
-        </MetricGrid>
+      <div className="mx-auto w-full max-w-[1180px] px-3 py-6 sm:px-5">
+        <WorldLive initial={world} />
 
-        {/* Your account */}
-        <section className="mt-8">
-          <SectionHeader title="Your account" action={{ label: "Portfolio", href: "/portfolio" }} />
-          <AccountPanel signedIn={signedIn} />
-        </section>
-
-        {/* Markets */}
-        <section className="mt-8">
-          <SectionHeader
-            title="Markets"
-            meta={live ? `${snapshot.tokens.length} tradeable` : undefined}
-            note={live ? `via ${snapshot.source}` : undefined}
-          />
-          <Panel>
-            {!live ? (
-              <SourceUnavailable source={snapshot.source} detail={snapshot.error} />
-            ) : snapshot.tokens.length === 0 ? (
-              <EmptyState
-                title="No markets returned"
-                body="The source responded but had no Solana markets to report."
-              />
-            ) : (
-              <MarketTable tokens={snapshot.tokens} />
-            )}
-          </Panel>
-        </section>
-
-        {/* League + signals */}
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <section className="min-w-0">
-            <SectionHeader title="Today's league" action={{ label: "Full board", href: "/leaderboard" }} />
-            <Panel>
-              {topToday.length === 0 ? (
-                <EmptyState
-                  title="Nobody on the board yet"
-                  body="Connect a wallet, take a position, and today's league starts ranking."
-                />
-              ) : (
-                <ol className="divide-y divide-line">
-                  {topToday.map((row, index) => (
-                    <li key={row.wallet} className="flex items-center gap-3 px-4 py-2.5">
-                      <span className="w-4 font-mono text-[11px] text-muted tnum">{index + 1}</span>
-                      <span className="font-mono text-[12.5px] text-ink">{shortAddress(row.wallet)}</span>
-                      {isEligible(row.heldAmount) ? (
-                        <span className="rounded bg-mint-wash px-1.5 py-0.5 font-mono text-[9.5px] font-semibold uppercase text-mint-text">
-                          rewards
-                        </span>
-                      ) : null}
-                      <span
-                        className={`ml-auto font-mono text-[13px] tnum ${row.periodReturn >= 0 ? "text-mint-text" : "text-down"}`}
-                      >
-                        {(row.periodReturn * 100).toFixed(2)}%
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </Panel>
-          </section>
-
-          <section className="min-w-0">
-            <SectionHeader title="Signals" note="Deterministic rules over live market data" />
-            <Panel>
-              {!live ? (
-                <SourceUnavailable source={snapshot.source} compact />
-              ) : signals.length === 0 ? (
-                <EmptyState title="No rules matched" body="Entries appear the moment a threshold clears." />
-              ) : (
-                <AgentFeed signals={signals} at={snapshot.fetchedAt} />
-              )}
-            </Panel>
-          </section>
-        </div>
-
-        <p className="mt-8 text-center text-[11.5px] text-muted">
-          Every fill uses a live indexed price — nothing is simulated from thin air.{" "}
-          <Link href="/rules" className="text-mint-text hover:underline">
-            How the game works →
+        <p className="mt-10 text-center text-[11.5px] text-muted">
+          The city runs on live indexed market data — when the source goes dark, the clones say
+          nothing rather than making numbers up.{" "}
+          <Link href="/how-it-works" className="text-link-text hover:underline">
+            Read the house rules →
           </Link>
         </p>
       </div>
