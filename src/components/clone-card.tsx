@@ -41,8 +41,8 @@ export function CloneCard({ clone }: { clone: CloneView }) {
   const persona = personaFor(clone.mint);
   return (
     <Link
-      href={`/clones/${clone.mint}`}
-      className="group block border border-line-strong bg-surface p-3.5 transition hover:border-ink"
+      href={clone.kind === "resident" ? `/residents#${clone.mint}` : `/clones/${clone.mint}`}
+      className="lift group block border border-line-strong bg-surface p-3.5 hover:border-ink"
       style={{ boxShadow: "var(--shadow-card)" }}
     >
       <div className="flex items-start justify-between gap-2">
@@ -50,10 +50,10 @@ export function CloneCard({ clone }: { clone: CloneView }) {
         <AwakeDot awake={clone.awake} />
       </div>
       <p className="mt-2.5 truncate text-[14px] font-semibold tracking-tight text-ink group-hover:underline">
-        ${clone.symbol}
+        {clone.kind === "resident" ? clone.symbol : `$${clone.symbol}`}
       </p>
       <p className="truncate text-[11px] text-muted">
-        {clone.name} · {persona.archetype} · {clone.kind}
+        {clone.name} · {persona.archetype} · {clone.kind === "resident" ? `$CLONE seat ${clone.seat?.label ?? ""}` : clone.kind}
       </p>
       <div className="mt-2.5 flex items-center justify-between gap-2 font-mono text-[11px] tnum">
         <span className="text-muted">{clone.priced ? usd(clone.stats.priceUsd) : "no live data"}</span>

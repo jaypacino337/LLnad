@@ -34,7 +34,9 @@ export default async function ClonePage({ params }: { params: Promise<{ mint: st
   }
 
   const world = await getWorldState();
-  let clone: CloneView | undefined = world.clones.find((entry) => entry.mint === mint);
+  let clone: CloneView | undefined = world.clones.find(
+    (entry) => entry.mint === mint && entry.kind !== "resident",
+  );
   let visiting = false;
 
   if (!clone) {

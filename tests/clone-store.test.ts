@@ -22,8 +22,8 @@ test("summoning registers once and lands in the feed", async () => {
   const again = await summon({ mint: MINT_A, symbol: "ALPHA", name: "Alpha", dexId: "pumpswap" });
   assert.ok(again.ok && again.already);
 
-  assert.equal(summonedClones().length, 1);
-  assert.equal(cityFeed().filter((entry) => entry.kind === "summon").length, 1);
+  assert.equal((await summonedClones()).length, 1);
+  assert.equal((await cityFeed()).filter((entry) => entry.kind === "summon").length, 1);
 });
 
 test("a bucket speaks once, and transitions become events", async () => {
@@ -39,21 +39,21 @@ test("a bucket speaks once, and transitions become events", async () => {
 
   await recordRound([say(1, true)]);
   await recordRound([say(1, true)]); // same bucket: no duplicate line
-  let speeches = cityFeed().filter((entry) => entry.mint === MINT_B && entry.kind === "speech");
+  let speeches = (await cityFeed()).filter((entry) => entry.mint === MINT_B && entry.kind === "speech");
   assert.equal(speeches.length, 1);
 
   await recordRound([say(2, true)]); // new bucket: speaks again
-  speeches = cityFeed().filter((entry) => entry.mint === MINT_B && entry.kind === "speech");
+  speeches = (await cityFeed()).filter((entry) => entry.mint === MINT_B && entry.kind === "speech");
   assert.equal(speeches.length, 2);
 
   await recordRound([say(3, false)]); // stopped trading: sleep event, no speech
-  const kinds = cityFeed()
+  const kinds = (await cityFeed())
     .filter((entry) => entry.mint === MINT_B)
     .map((entry) => entry.kind);
   assert.deepEqual(kinds, ["speech", "speech", "sleep"]);
 
   await recordRound([say(4, true)]); // traded again: wake event plus a line
-  const after = cityFeed().filter((entry) => entry.mint === MINT_B);
+  const after = (await cityFeed()).filter((entry) => entry.mint === MINT_B);
   assert.deepEqual(
     after.map((entry) => entry.kind),
     ["speech", "speech", "sleep", "wake", "speech"],
@@ -74,7 +74,7 @@ test("the feed stays capped", async () => {
       },
     ]);
   }
-  assert.ok(cityFeed().length <= MAX_FEED);
+  assert.ok((await cityFeed()).length <= MAX_FEED);
   // The newest line survived the cap.
-  assert.ok(cityFeed().some((entry) => entry.text === `line ${10 + MAX_FEED + 29}`));
+  assert.ok((await cityFeed()).some((entry) => entry.text === `line ${10 + MAX_FEED + 29}`));
 });

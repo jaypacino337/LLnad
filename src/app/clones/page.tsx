@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CloneCard } from "@/components/clone-card";
+import { Reveal } from "@/components/motion";
 import { EmptyState, SectionHeader, SourceUnavailable } from "@/components/ui";
 import { getWorldState } from "@/lib/clone-api";
 
@@ -9,13 +10,14 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "The clones",
-  description: "Everyone who lives in the city right now — wild and summoned.",
+  description: "Everyone who lives in the city right now — wild, summoned and $CLONE residents.",
 };
 
 export default async function ClonesPage() {
   const world = await getWorldState();
   const summoned = world.clones.filter((clone) => clone.kind === "summoned");
   const wild = world.clones.filter((clone) => clone.kind === "wild");
+  const residents = world.clones.filter((clone) => clone.kind === "resident");
 
   return (
     <div className="mx-auto w-full max-w-[1180px] px-3 py-8 sm:px-5">
@@ -31,7 +33,7 @@ export default async function ClonesPage() {
         </div>
       ) : (
         <>
-          <section className="mt-8">
+          <Reveal as="section" className="mt-8">
             <SectionHeader
               title="Summoned"
               meta={String(summoned.length)}
@@ -51,9 +53,9 @@ export default async function ClonesPage() {
                 ))}
               </div>
             )}
-          </section>
+          </Reveal>
 
-          <section className="mt-9">
+          <Reveal as="section" className="mt-9">
             <SectionHeader title="Wild" meta={String(wild.length)} note="most-traded live markets" />
             {wild.length === 0 ? (
               <div className="win">
@@ -66,7 +68,29 @@ export default async function ClonesPage() {
                 ))}
               </div>
             )}
-          </section>
+          </Reveal>
+
+          <Reveal as="section" className="mt-9">
+            <SectionHeader
+              title={`$${world.token.symbol} residents`}
+              meta={world.token.seatsTaken === null ? "—" : String(world.token.seatsTaken)}
+              action={{ label: world.token.open ? "Claim a seat" : "How seats work", href: "/residents" }}
+            />
+            {residents.length === 0 ? (
+              <div className="win">
+                <EmptyState
+                  title={world.token.open ? "No residents yet" : `Seats open when $${world.token.symbol} launches`}
+                  body="Seat holders get a resident clone that lives on the token's real pulse."
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {residents.map((clone) => (
+                  <CloneCard key={clone.mint} clone={clone} />
+                ))}
+              </div>
+            )}
+          </Reveal>
         </>
       )}
 

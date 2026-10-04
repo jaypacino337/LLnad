@@ -1,0 +1,34 @@
+{
+  "mint": "PASTE_CLONE_MINT_AFTER_LAUNCH",
+  "wallets": {
+    "creator": "CREATOR_KEYPAIR"
+  },
+  "exclude": [],
+  "snapshot": {
+    "minBalance": 250000,
+    "includePdas": false
+  },
+  "airdrop": {
+    "mode": "prorata",
+    "capBps": 400,
+    "minPayoutSol": 0.0001,
+    "reserveSol": 0.05
+  },
+  "route": {
+    "airdrop": 50,
+    "buyback": 30,
+    "creator": 20
+  },
+  "payTo": {
+    "creator": "PASTE_PAYOUT_WALLET"
+  },
+  "trade": {
+    "slippagePct": 10,
+    "priorityFeeSol": 0.00005,
+    "pool": "auto"
+  },
+  "seats": {
+    "url": "https://YOUR-CLONE-SITE.vercel.app"
+  },
+  "intervalMinutes": 15
+}
