@@ -8,6 +8,7 @@ const NAV = [
   { href: "/", label: "City" },
   { href: "/clones", label: "Clones" },
   { href: "/summon", label: "Summon" },
+  { href: "/residents", label: "Residents" },
   { href: "/how-it-works", label: "How it works" },
 ] as const;
 
@@ -53,7 +54,7 @@ export function SiteHeader({ online }: { online: boolean }) {
           ))}
           <Link
             href="/summon"
-            className="border border-ink bg-ink px-3 py-1.5 text-[12.5px] font-semibold text-bg transition hover:opacity-85"
+            className="press border border-ink bg-ink px-3 py-1.5 text-[12.5px] font-semibold text-bg transition hover:opacity-85"
           >
             Summon a clone
           </Link>

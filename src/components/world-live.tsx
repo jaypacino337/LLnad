@@ -16,20 +16,27 @@ const POLL_MS = 30_000;
 /** A speech line hovers over its speaker this long. */
 const BUBBLE_MS = 120_000;
 
-function Inspector({ clone }: { clone: CloneView }) {
+function Inspector({ clone, tokenSymbol }: { clone: CloneView; tokenSymbol: string }) {
   const persona = personaFor(clone.mint);
+  const resident = clone.kind === "resident";
   return (
     <div className="row-in grid gap-4 border-t border-line-strong bg-surface px-4 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
       <CloneSprite mint={clone.mint} size={64} asleep={!clone.awake} />
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <p className="text-[16px] font-semibold tracking-tight text-ink">${clone.symbol}</p>
+          <p className="text-[16px] font-semibold tracking-tight text-ink">
+            {resident ? clone.symbol : `$${clone.symbol}`}
+          </p>
           <AwakeDot awake={clone.awake} />
           <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted">
-            {persona.archetype} · {clone.kind}
+            {persona.archetype} · {resident ? `resident · seat ${clone.seat?.label}` : clone.kind}
           </span>
         </div>
-        <p className="mt-1 text-[12px] leading-relaxed text-muted">{persona.bio}</p>
+        <p className="mt-1 text-[12px] leading-relaxed text-muted">
+          {resident
+            ? `Holds a $${tokenSymbol} seat, so it lives here and runs on $${tokenSymbol}'s pulse. Readings below are $${tokenSymbol}'s.`
+            : persona.bio}
+        </p>
         <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 font-mono text-[11.5px] tnum">
           <span className="text-ink">{clone.priced ? usd(clone.stats.priceUsd) : "no live data"}</span>
           <span className="text-muted">
@@ -44,10 +51,10 @@ function Inspector({ clone }: { clone: CloneView }) {
       <div className="flex w-full flex-col justify-between gap-3 sm:w-[190px]">
         <EnergyBar energy={clone.energy} volume24h={clone.stats.volume24h} />
         <Link
-          href={`/clones/${clone.mint}`}
+          href={resident ? `/residents#${clone.mint}` : `/clones/${clone.mint}`}
           className="border border-ink bg-ink px-3 py-1.5 text-center text-[12px] font-semibold text-bg transition hover:opacity-85"
         >
-          Visit {`$${clone.symbol}`} →
+          {resident ? "Resident list" : `Visit $${clone.symbol}`} →
         </Link>
       </div>
     </div>
@@ -90,8 +97,11 @@ export function WorldLive({ initial }: { initial: WorldState }) {
   }, [world]);
 
   const live = world.status === "live";
-  const awakeCount = world.clones.filter((clone) => clone.awake).length;
-  const volume = world.clones.reduce((sum, clone) => sum + (clone.stats.volume24h ?? 0), 0);
+  // Residents share $CLONE's readings, so only token clones count toward totals.
+  const tokens = world.clones.filter((clone) => clone.kind !== "resident");
+  const residents = world.clones.length - tokens.length;
+  const awakeCount = tokens.filter((clone) => clone.awake).length;
+  const volume = tokens.reduce((sum, clone) => sum + (clone.stats.volume24h ?? 0), 0);
   const selectedClone = world.clones.find((clone) => clone.mint === selected) ?? null;
 
   return (
@@ -99,7 +109,11 @@ export function WorldLive({ initial }: { initial: WorldState }) {
       {/* readings strip */}
       <div className="grid grid-cols-2 gap-px border border-line-strong bg-line-strong sm:grid-cols-4" style={{ boxShadow: "var(--shadow-card)" }}>
         {[
-          { label: "Clones in the city", value: String(world.clones.length), hint: "wild + summoned" },
+          {
+            label: "Clones in the city",
+            value: String(world.clones.length),
+            hint: residents > 0 ? `wild + summoned + ${residents} residents` : "wild + summoned",
+          },
           { label: "Awake", value: live ? String(awakeCount) : "—", hint: "traded in the last hour" },
           { label: "Their 24h volume", value: live ? usd(volume) : "—", hint: `via ${world.source}` },
           {
@@ -133,7 +147,7 @@ export function WorldLive({ initial }: { initial: WorldState }) {
           <>
             <City clones={world.clones} selected={selected} onSelect={setSelected} bubble={bubble} />
             {selectedClone ? (
-              <Inspector clone={selectedClone} />
+              <Inspector clone={selectedClone} tokenSymbol={world.token.symbol} />
             ) : (
               <p className="border-t border-line px-4 py-2 text-center font-mono text-[10.5px] text-muted">
                 click a clone to see what it is thinking

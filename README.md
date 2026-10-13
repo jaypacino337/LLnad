@@ -14,12 +14,23 @@ trade and it goes to THE CACHE to sleep; the next real trade wakes it up.
   deterministically from the mint address. Speech comes from a rule bank (or from Claude when
   `ANTHROPIC_API_KEY` is set) and is labeled as generated — any figure inside a line is checked
   against the live readings before it prints.
-- **Never:** fabricated numbers, placeholder data dressed as live data, or any input besides a
-  public mint address. No wallet, no signatures, no keys.
+- **Never:** fabricated numbers, placeholder data dressed as live data, or a private-key input.
+  Summoning takes one public mint address. $CLONE seats take a public wallet address and a public
+  𝕏 post link; the only signature anywhere is the creator's Phantom `signMessage` to open seats.
+
+## $CLONE residents
+
+Seat holders of $CLONE get a **resident clone**: a pixel body seeded from their wallet that walks
+the city with a cobalt badge and lives on $CLONE's real pulse. Seats are the memcoinz guest list,
+ported: claim with an 𝕏 post carrying a wallet-bound code, one seat per wallet / 𝕏 account,
+waitlist in post order, "sell it, lose it" sweeps from on-chain balances, creator-signed batches.
+The shared flywheel pays seated wallets only. Until `CLONE_TOKEN_MINT` and friends are set, the
+seats show "not open" and no figures. Launch + flywheel runbook: [`docs/TOKEN.md`](docs/TOKEN.md).
 
 ## Stack
 
-Next.js (App Router) · React · Tailwind v4 · zero runtime dependencies beyond that.
+Next.js (App Router) · React · Tailwind v4 · zero runtime dependencies beyond that (Supabase and
+Solana RPC are plain `fetch`).
 
 - `src/lib/world.ts` — the deterministic world: map, personas, sprites, walk schedules. Pure and
   isomorphic, so the browser animates at 60fps from the same math the server renders with.
@@ -27,8 +38,11 @@ Next.js (App Router) · React · Tailwind v4 · zero runtime dependencies beyond
   minds with a numeric-grounding check.
 - `src/lib/market.ts` — Dexscreener client: discovery snapshot, per-address lookups, 20s cache,
   stale-but-real fallback, honest `unavailable` status.
-- `src/lib/clone-store.ts` — JSON persistence for summons and the city feed (atomic writes,
-  cross-instance stamp invalidation).
+- `src/lib/clone-store.ts` — persistence for summons and the city feed: Supabase (versioned jsonb,
+  optimistic locking) when `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` are set, else a JSON file.
+- `src/lib/seats/` — the $CLONE guest list, ported from memcoinz: `core.ts` (rules), `store.ts`
+  (Supabase / file), `chain.ts` (balances over JSON-RPC), API in `src/app/api/seats/*`.
+- `supabase/schema.sql` — the two tables (`clone_city`, `seat_coins`), RLS on, no public policies.
 
 ## Run it
 
@@ -38,7 +52,7 @@ npm run dev    # http://localhost:3000
 npm run check  # typecheck + lint + unit tests + build
 ```
 
-Deployment needs nothing beyond the repo: push to the branch your host watches. See
-`.env.example` for the three optional variables (site URL, Claude minds, data dir). On
-serverless hosts the JSON state is ephemeral — wild clones always repopulate the city, but
-summons reset on cold starts unless `CLONE_DATA_DIR` points at a persistent disk.
+Deployment needs nothing beyond the repo: push to the branch your host watches. Every variable in
+`.env.example` is optional. On serverless hosts set the two Supabase variables (after running
+`supabase/schema.sql`), or summons and seats reset on cold starts. Locally, state lives in
+`./.data` (or `CLONE_DATA_DIR`).

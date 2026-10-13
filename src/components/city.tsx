@@ -181,10 +181,27 @@ export function City({
                 )}
               </g>
             </g>
+            {clone.kind === "resident" ? (
+              // Seat holders wear a cobalt pixel badge: a $CLONE resident.
+              <rect
+                x={-PX * 1.5}
+                y={-SPRITE_H * PX - PX * 3.4}
+                width={PX * 3}
+                height={PX * 1.4}
+                fill="var(--link)"
+                opacity={clone.awake ? 1 : 0.5}
+              />
+            ) : null}
             <text
               y={10}
               textAnchor="middle"
-              fill={clone.awake ? "var(--ink-soft)" : "var(--muted)"}
+              fill={
+                clone.kind === "resident"
+                  ? "var(--link-text)"
+                  : clone.awake
+                    ? "var(--ink-soft)"
+                    : "var(--muted)"
+              }
               style={{ font: "600 8px var(--font-mono)" }}
             >
               {clone.symbol.slice(0, 10)}

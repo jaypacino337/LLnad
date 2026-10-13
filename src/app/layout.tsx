@@ -28,7 +28,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const snapshot = await getMarketSnapshot();
 
   return (
-    <html lang="en">
+    // suppressHydrationWarning: the inline script below adds the "js" class
+    // before hydration (it gates scroll reveals, so no-JS visitors see everything).
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: 'document.documentElement.classList.add("js")' }} />
+      </head>
       <body className="min-h-dvh">
         <div className="flex min-h-dvh flex-col">
           <SiteHeader online={snapshot.status === "live"} />

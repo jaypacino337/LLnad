@@ -3,7 +3,13 @@
   "compilerOptions": {
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ],
+    "target": "ES2022"
   },
-  "include": ["**/*.ts", "../src/lib/**/*.ts"]
+  "include": [
+    "**/*.ts",
+    "../src/lib/**/*.ts"
+  ]
 }

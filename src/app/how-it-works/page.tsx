@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { Reveal } from "@/components/motion";
 import { Panel, SectionHeader } from "@/components/ui";
 import { PLACES } from "@/lib/world";
 
@@ -39,7 +40,16 @@ const RULES = [
   "Awake and asleep are not moods: awake means the token really traded in the last hour.",
   "Speech is generated fiction — a deterministic line bank, or Claude when a mind key is configured — and is labeled as such. Any figure inside a line is checked against the same live readings before it prints.",
   "Clones are characters, not signals. Nothing here is financial advice, and a cute sprite is not a reason to buy anything. Memecoins can go to zero.",
-  "Summoning never involves a wallet, a signature or any kind of key. The only input this site ever asks for is a public mint address.",
+  "Summoning never involves a wallet, a signature or any kind of key. The only input it takes is a public mint address.",
+  "$CLONE seats take a public wallet address and a public 𝕏 post link. Phantom, if you use it, is asked only for your public key; the creator signs a plain-text message to open more seats. There is no field for a private key anywhere.",
+  "A seat is a perk, not a gate: anyone can buy $CLONE anywhere. Resident clones run on $CLONE's real readings, and seat counts come straight from the registry. Before launch they show nothing.",
+] as const;
+
+const RESIDENT_STEPS = [
+  { title: "Claim", body: "Post a phrase on 𝕏 that carries a code derived from your wallet. The site reads the public post (no 𝕏 login) and seats you, or waitlists you in post order when the city is full." },
+  { title: "Move in", body: "Your wallet gets a pixel clone with the cobalt resident badge. It lives on $CLONE's pulse: awake when $CLONE traded in the last hour, asleep in THE CACHE when it didn't." },
+  { title: "Hold it, keep it", body: "Anyone can trigger a check that reads seat holders' balances from chain. Below the minimum, the seat goes to the next person on the waitlist." },
+  { title: "Rewards", body: "When the $CLONE flywheel runs, it pays only seated wallets. If the seat list can't be read, it pays nobody rather than everybody." },
 ] as const;
 
 export default function HowItWorksPage() {
@@ -53,20 +63,37 @@ export default function HowItWorksPage() {
         which.
       </p>
 
-      <section className="mt-8">
+      <Reveal as="section" className="mt-8">
         <SectionHeader title="The loop" />
         <div className="grid gap-3 sm:grid-cols-2">
-          {STEPS.map((step) => (
-            <Panel key={step.number} padded>
-              <p className="font-mono text-[11px] text-link-text">{step.number}</p>
-              <h3 className="mt-1 text-[15px] font-semibold tracking-tight text-ink">{step.title}</h3>
-              <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">{step.body}</p>
-            </Panel>
+          {STEPS.map((step, index) => (
+            <Reveal key={step.number} delay={index * 80} className="h-full">
+              <Panel padded className="lift h-full">
+                <p className="font-mono text-[11px] text-link-text">{step.number}</p>
+                <h3 className="mt-1 text-[15px] font-semibold tracking-tight text-ink">{step.title}</h3>
+                <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">{step.body}</p>
+              </Panel>
+            </Reveal>
           ))}
         </div>
-      </section>
+      </Reveal>
 
-      <section className="mt-9 max-w-3xl">
+      <Reveal as="section" className="mt-9">
+        <SectionHeader title="$CLONE residents" action={{ label: "Seats", href: "/residents" }} />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {RESIDENT_STEPS.map((step, index) => (
+            <Reveal key={step.title} delay={index * 80} className="h-full">
+              <Panel padded className="lift h-full">
+                <p className="font-mono text-[11px] text-link-text">R{index + 1}</p>
+                <h3 className="mt-1 text-[15px] font-semibold tracking-tight text-ink">{step.title}</h3>
+                <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">{step.body}</p>
+              </Panel>
+            </Reveal>
+          ))}
+        </div>
+      </Reveal>
+
+      <Reveal as="section" className="mt-9 max-w-3xl">
         <SectionHeader title="The places" note="where clones hang out" />
         <div className="win">
           <div className="win-title">map.txt</div>
@@ -85,9 +112,9 @@ export default function HowItWorksPage() {
             ))}
           </ul>
         </div>
-      </section>
+      </Reveal>
 
-      <section className="mt-9 max-w-3xl">
+      <Reveal as="section" className="mt-9 max-w-3xl">
         <SectionHeader title="House rules" note="what is real, what is theater" />
         <div className="win">
           <div className="win-title">rules.txt</div>
@@ -100,12 +127,12 @@ export default function HowItWorksPage() {
             ))}
           </ol>
         </div>
-      </section>
+      </Reveal>
 
       <div className="mt-10 text-center">
         <Link
           href="/summon"
-          className="inline-block border border-ink bg-ink px-5 py-2.5 text-[13.5px] font-semibold text-bg transition hover:opacity-85"
+          className="press inline-block border border-ink bg-ink px-5 py-2.5 text-[13.5px] font-semibold text-bg transition hover:opacity-85"
         >
           Give your coin a clone →
         </Link>
